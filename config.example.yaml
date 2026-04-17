@@ -1,0 +1,71 @@
+# Default config for the software-self-improvement skill.
+# Copy and edit. Anything omitted falls back to these defaults.
+
+target:
+  type: folder            # folder | github
+  location: "./"          # absolute/relative folder path, or github url (https or git@)
+  subpath: ""             # optional: limit analysis to a subfolder inside the repo
+  clone_branch: null      # github only: branch to clone (null → default branch)
+
+rounds: 3                 # hard cap; early-exit fires the moment targets are met
+overall_target: 85        # overall weighted score (1–100)
+dimension_target: 85      # default per-dimension target; overridable per dim below
+
+early_stop:
+  enabled: true
+
+git:
+  commit_per_round: true
+  branch: "quality/auto-research"
+  push: false             # never pushes unless explicitly set AND authorised in-session
+
+reporting:
+  output_dir: "reports"
+  formats: [markdown, json]
+
+dimensions:
+  linting:
+    enabled: true
+    weight: 0.10
+    tools: [eslint, ruff, flake8, prettier, golangci-lint]
+  type_safety:
+    enabled: true
+    weight: 0.15
+    tools: [tsc, mypy, pyright]
+  test_coverage:
+    enabled: true
+    weight: 0.20
+    tools: [pytest-cov, jest, vitest, go-cover]
+    statement_target: 80
+    branch_target: 75
+    function_target: 85
+  security:
+    enabled: true
+    weight: 0.15
+    tools: [bandit, semgrep, trivy, gitleaks, npm-audit]
+    # security typically deserves a higher bar; override:
+    # target: 90
+  performance:
+    enabled: true
+    weight: 0.10
+    tools: [radon-cc]
+    max_cyclomatic_complexity: 10
+  architecture:
+    enabled: true
+    weight: 0.10
+    tools: [llm-judge]       # no cheap static tool; LLM reviews module layering & SOLID
+  readability:
+    enabled: true
+    weight: 0.10
+    tools: [radon-mi, eslint-complexity]
+    max_function_lines: 50
+    max_file_lines: 800
+    max_nesting_depth: 4
+  error_handling:
+    enabled: true
+    weight: 0.05
+    tools: [llm-judge]
+  documentation:
+    enabled: true
+    weight: 0.05
+    tools: [interrogate, llm-judge]

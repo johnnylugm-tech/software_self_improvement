@@ -1,0 +1,36 @@
+# Security-critical service: higher overall bar, strict security dim,
+# reduced weight on documentation, 5 rounds.
+
+target:
+  type: github
+  location: https://github.com/acme/payments-api
+  clone_branch: main
+
+rounds: 5
+overall_target: 92
+dimension_target: 85
+
+early_stop:
+  enabled: true
+
+git:
+  commit_per_round: true
+  branch: "quality/security-hardening"
+  push: false
+
+dimensions:
+  security:
+    weight: 0.25
+    target: 95
+    tools: [bandit, semgrep, trivy, gitleaks, npm-audit]
+  type_safety:
+    weight: 0.15
+    target: 90
+  test_coverage:
+    weight: 0.20
+    target: 90
+  error_handling:
+    weight: 0.10
+    target: 90
+  documentation:
+    enabled: false        # internal service — skip docs dim

@@ -1,0 +1,28 @@
+# TypeScript/Node toolchain preset.
+
+target:
+  type: folder
+  location: "./"
+
+rounds: 3
+overall_target: 85
+dimension_target: 85
+
+dimensions:
+  linting:
+    tools: [eslint, prettier]
+  type_safety:
+    tools: [tsc]
+    target: 90
+  test_coverage:
+    tools: [jest, vitest]
+  security:
+    tools: [semgrep, trivy, npm-audit, gitleaks]
+  performance:
+    tools: [eslint-complexity]
+  readability:
+    tools: [eslint-complexity]
+    max_function_lines: 50
+    max_file_lines: 800
+  documentation:
+    tools: [llm-judge]

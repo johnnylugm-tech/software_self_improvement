@@ -1,0 +1,6 @@
+# Minimum-viable config — everything else inherits defaults.
+# (all 9 dimensions on, 85 across the board, 3 rounds, early-stop on)
+
+target:
+  type: folder
+  location: "./"

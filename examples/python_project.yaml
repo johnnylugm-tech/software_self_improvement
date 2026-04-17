@@ -1,0 +1,30 @@
+# Python-only toolchain preset.
+
+target:
+  type: folder
+  location: "./"
+  subpath: "src"
+
+rounds: 3
+overall_target: 85
+dimension_target: 85
+
+dimensions:
+  linting:
+    tools: [ruff, flake8]
+  type_safety:
+    tools: [mypy, pyright]
+  test_coverage:
+    tools: [pytest-cov]
+    statement_target: 85
+    branch_target: 80
+    function_target: 90
+  security:
+    tools: [bandit, semgrep, gitleaks]
+  performance:
+    tools: [radon-cc]
+    max_cyclomatic_complexity: 10
+  readability:
+    tools: [radon-mi]
+  documentation:
+    tools: [interrogate]
