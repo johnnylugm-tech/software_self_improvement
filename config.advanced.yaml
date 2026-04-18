@@ -1,5 +1,5 @@
 # Harness Quality Framework - Advanced Configuration
-# 9 core + 7 extended dimensions
+# 10 core + 7 extended dimensions
 # Use for: Critical systems, compliance-required projects, maximum quality assurance
 
 version: "1.0"
@@ -14,10 +14,10 @@ workspace:
   work_dir: ".sessi-work"
   preserve_git: true
 
-# All 16 dimensions (9 core + 7 extended)
+# All 17 dimensions (10 core + 7 extended)
 dimensions:
 
-  # === CORE DIMENSIONS (9) ===
+  # === CORE DIMENSIONS (10) ===
 
   linting:
     enabled: true
@@ -105,6 +105,17 @@ dimensions:
       - jsdoc
       - rustdoc
       - javadoc
+
+  secrets_scanning:
+    enabled: true
+    weight: 0.07
+    target: 100            # Zero tolerance: any secret leak = failure
+    tools:
+      - detect-secrets     # Inline scan + baseline management (700+ secret types)
+      - gitleaks           # Full git history deep scan + entropy analysis
+    # Distinct from 'security' (code patterns: SQLi, XSS, eval, dependency CVEs)
+    # Covers: API keys, tokens, private keys, connection strings, cloud credentials
+    # Scans: current codebase + entire git commit history
 
   # === EXTENDED DIMENSIONS (7) ===
   # These are DISABLED by default. Enable individually based on your needs.

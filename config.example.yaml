@@ -1,5 +1,5 @@
 # Harness Quality Framework - Standard Configuration
-# 9 core dimensions, all enabled by default
+# 10 core dimensions, all enabled by default
 # Perfect for: Production software, web apps, libraries
 
 version: "1.0"
@@ -16,12 +16,12 @@ workspace:
   work_dir: ".sessi-work"  # Where to store evaluation artifacts
   preserve_git: true       # Keep git history for traceability
 
-# Core dimensions (9 standard quality dimensions)
+# Core dimensions (10 standard quality dimensions)
 dimensions:
 
   linting:
     enabled: true
-    weight: 0.08
+    weight: 0.07
     target: 95
     tools:
       - eslint              # JavaScript
@@ -31,7 +31,7 @@ dimensions:
 
   type_safety:
     enabled: true
-    weight: 0.12
+    weight: 0.11
     target: 95
     tools:
       - pyright             # Python
@@ -41,7 +41,7 @@ dimensions:
 
   test_coverage:
     enabled: true
-    weight: 0.15
+    weight: 0.14
     target: 80
     tools:
       - coverage            # Python
@@ -51,17 +51,17 @@ dimensions:
 
   security:
     enabled: true
-    weight: 0.12
+    weight: 0.11
     target: 90
     tools:
-      - bandit              # Python
-      - npm-audit           # JavaScript
-      - cargo-audit         # Rust
-      - git-secrets         # General
+      - bandit              # Python (code patterns: SQLi, XSS, eval)
+      - npm-audit           # JavaScript dependencies
+      - cargo-audit         # Rust dependencies
+      - git-secrets         # Commit-time secret prevention
 
   performance:
     enabled: true
-    weight: 0.10
+    weight: 0.09
     target: 80
     tools:
       - pytest-benchmark    # Python
@@ -71,7 +71,7 @@ dimensions:
 
   architecture:
     enabled: true
-    weight: 0.10
+    weight: 0.09
     target: 80
     tools:
       - sonarqube           # Multi-language
@@ -80,7 +80,7 @@ dimensions:
 
   readability:
     enabled: true
-    weight: 0.09
+    weight: 0.08
     target: 85
     tools:
       - radon               # Python cyclomatic complexity
@@ -89,7 +89,7 @@ dimensions:
 
   error_handling:
     enabled: true
-    weight: 0.11
+    weight: 0.10
     target: 85
     tools:
       - custom-checks       # Error recovery tests
@@ -98,13 +98,24 @@ dimensions:
 
   documentation:
     enabled: true
-    weight: 0.13
+    weight: 0.12
     target: 85
     tools:
       - pydocstyle         # Python
       - jsdoc              # JavaScript
       - rustdoc            # Rust
       - javadoc            # Java
+
+  secrets_scanning:
+    enabled: true
+    weight: 0.09
+    target: 100            # Zero tolerance: any secret leak = failure
+    tools:
+      - detect-secrets     # pip3: inline scan + baseline management (700+ secret types)
+      - gitleaks           # brew: full git history deep scan + entropy analysis
+    # Distinct from 'security' (which covers code patterns: SQLi, XSS, eval)
+    # Covers: API keys, tokens, private keys, connection strings, cloud credentials
+    # Scans: current files + entire git commit history
 
 # Score calculation
 scoring:
