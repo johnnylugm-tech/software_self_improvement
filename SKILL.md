@@ -98,11 +98,16 @@ For each fix:
 
 ### Step 4: Final Report
 
-Must include every section below. Nothing silently dropped.
+Full-transparency report — see `prompts/final_report.md` for the protocol.
+Auto-generated from issue registry + round data + git log:
 
 ```bash
-python3 scripts/issue_tracker.py report .sessi-work/issue_registry.json \
-  > .sessi-work/final_report_data.json
+python3 scripts/report_gen.py \
+  <repo_path> \
+  .sessi-work \
+  .sessi-work/issue_registry.json \
+  <score_gate> \
+  .sessi-work/final_report.md
 ```
 
 **Mandatory sections:**

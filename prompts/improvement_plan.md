@@ -136,8 +136,12 @@ Iterate the `open_issues.json` queue. For each issue:
      → keep change
      → git add <files>
      → git commit -m "fix(<dimension>): <message> [issue:<id>]"
-     → python3 scripts/issue_tracker.py fix \
-         .sessi-work/issue_registry.json <id> <round_num> "<commit_sha>"
+     → CAPTURE traceability for the final report:
+         COMMIT_SHA=$(git rev-parse HEAD)
+         FILES=$(git show --name-only --format= $COMMIT_SHA | tr '\n' ',' | sed 's/,$//')
+         python3 scripts/issue_tracker.py fix \
+           .sessi-work/issue_registry.json <id> <round_num> \
+           "$COMMIT_SHA" "$FILES" "<optional-note>"
 
    IF tool still reports it OR score regressed:
      → git revert --no-edit HEAD     (or discard uncommitted change)

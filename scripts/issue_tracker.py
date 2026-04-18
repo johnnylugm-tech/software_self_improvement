@@ -80,15 +80,30 @@ def add_finding(registry: dict, finding: dict, dimension: str, round_num: int) -
         "last_seen_round": round_num,
         "round_resolved": None,
         "resolution_note": None,
+        "commit_sha": None,         # populated on mark_fixed
+        "files_changed": [],        # populated on mark_fixed
     })
     return iid
 
 
-def mark_fixed(registry: dict, issue_id: str, round_num: int, note: str = ""):
+def mark_fixed(
+    registry: dict,
+    issue_id: str,
+    round_num: int,
+    commit_sha: str = "",
+    files_changed: list = None,
+    note: str = "",
+):
+    """
+    Mark an issue fixed. Traceability fields (commit_sha, files_changed) are
+    first-class so the final report can link every fix to its git evidence.
+    """
     issue = _find(registry, issue_id)
     issue["status"] = "fixed"
     issue["round_resolved"] = round_num
-    issue["resolution_note"] = note
+    issue["resolution_note"] = note or (f"Fixed in {commit_sha}" if commit_sha else "")
+    issue["commit_sha"] = commit_sha or None
+    issue["files_changed"] = files_changed or []
 
 
 def mark_deferred(registry: dict, issue_id: str, round_num: int, reason: str):
@@ -160,21 +175,48 @@ def accepted_risks(registry: dict) -> list:
     return issues
 
 
+def by_dimension(registry: dict) -> dict:
+    """
+    Per-dimension breakdown: for each dimension, how many issues were found,
+    fixed, deferred, wontfix, still open — plus severity histogram.
+    Enables the per-dimension summary table in the final report.
+    """
+    dims = {}
+    for i in registry["issues"]:
+        d = i["dimension"]
+        if d not in dims:
+            dims[d] = {
+                "found": 0, "fixed": 0, "deferred": 0, "wontfix": 0, "open": 0,
+                "by_severity": {},
+                "issues": [],
+            }
+        dims[d]["found"] += 1
+        dims[d][i["status"]] += 1
+        sev = i["severity"]
+        dims[d]["by_severity"][sev] = dims[d]["by_severity"].get(sev, 0) + 1
+        dims[d]["issues"].append(i)
+    return dims
+
+
 def report(registry: dict) -> dict:
     """
     Compact report for the final summary:
       - summary counts
       - open issues (still to fix)
       - accepted risks (deferred + wontfix with reasons)
-      - fixed count (for trajectory)
+      - fixed issues (with commit_sha + files_changed)
+      - per-dimension breakdown
     """
     s = summary(registry)
     fixed = [i for i in registry["issues"] if i["status"] == "fixed"]
+    fixed.sort(key=lambda i: (SEVERITY_ORDER.get(i["severity"], 99), i.get("round_resolved") or 0))
     return {
         "summary": s,
         "open": open_issues(registry),
         "accepted_risks": accepted_risks(registry),
+        "fixed": fixed,
         "fixed_count": len(fixed),
+        "by_dimension": by_dimension(registry),
     }
 
 
@@ -201,7 +243,7 @@ def main():
         print(f"""Usage:
   {sys.argv[0]} summary <registry.json>
   {sys.argv[0]} add <registry.json> <dimension> <round> <finding.json>
-  {sys.argv[0]} fix <registry.json> <issue_id> <round> [note]
+  {sys.argv[0]} fix <registry.json> <issue_id> <round> [commit_sha] [files_csv] [note]
   {sys.argv[0]} defer <registry.json> <issue_id> <round> <reason>
   {sys.argv[0]} wontfix <registry.json> <issue_id> <round> <reason>
   {sys.argv[0]} open <registry.json> [severity_filter]
@@ -227,9 +269,13 @@ def main():
         print(iid)
 
     elif cmd == "fix":
+        # fix <registry> <id> <round> [commit_sha] [files_csv] [note]
         iid, rnd = sys.argv[3], int(sys.argv[4])
-        note = sys.argv[5] if len(sys.argv) > 5 else ""
-        mark_fixed(registry, iid, rnd, note)
+        commit_sha = sys.argv[5] if len(sys.argv) > 5 else ""
+        files_csv = sys.argv[6] if len(sys.argv) > 6 else ""
+        note = sys.argv[7] if len(sys.argv) > 7 else ""
+        files = [f.strip() for f in files_csv.split(",") if f.strip()] if files_csv else []
+        mark_fixed(registry, iid, rnd, commit_sha=commit_sha, files_changed=files, note=note)
         save(registry, path)
         print(f"fixed: {iid}")
 
