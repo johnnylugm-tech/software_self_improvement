@@ -1,0 +1,131 @@
+# Harness Quality Framework - Standard Configuration
+# 9 core dimensions, all enabled by default
+# Perfect for: Production software, web apps, libraries
+
+version: "1.0"
+
+# Global settings
+quality:
+  target: 85              # Quality score target (0-100)
+  max_rounds: 3           # Maximum improvement rounds
+  early_stop: true        # Stop when target reached
+  commit_per_fix: true    # One commit per improvement
+
+# Working environment
+workspace:
+  work_dir: ".sessi-work"  # Where to store evaluation artifacts
+  preserve_git: true       # Keep git history for traceability
+
+# Core dimensions (9 standard quality dimensions)
+dimensions:
+
+  linting:
+    enabled: true
+    weight: 0.08
+    target: 95
+    tools:
+      - eslint              # JavaScript
+      - pylint              # Python
+      - clippy              # Rust
+      - golangci-lint       # Go
+
+  type_safety:
+    enabled: true
+    weight: 0.12
+    target: 95
+    tools:
+      - pyright             # Python
+      - eslint              # JavaScript (with @typescript-eslint)
+      - rustc               # Rust
+      - javac               # Java
+
+  test_coverage:
+    enabled: true
+    weight: 0.15
+    target: 80
+    tools:
+      - coverage            # Python
+      - nyc                 # JavaScript
+      - tarpaulin           # Rust
+      - jacoco              # Java
+
+  security:
+    enabled: true
+    weight: 0.12
+    target: 90
+    tools:
+      - bandit              # Python
+      - npm-audit           # JavaScript
+      - cargo-audit         # Rust
+      - git-secrets         # General
+
+  performance:
+    enabled: true
+    weight: 0.10
+    target: 80
+    tools:
+      - pytest-benchmark    # Python
+      - lighthouse          # Web (Chromium)
+      - cargo-criterion     # Rust
+      - jmh                 # Java
+
+  architecture:
+    enabled: true
+    weight: 0.10
+    target: 80
+    tools:
+      - sonarqube           # Multi-language
+      - codeql              # Security analysis
+      - architecture-tests  # Custom
+
+  readability:
+    enabled: true
+    weight: 0.09
+    target: 85
+    tools:
+      - radon               # Python cyclomatic complexity
+      - eslint-plugin-sonarjs  # JavaScript
+      - clippy              # Rust
+
+  error_handling:
+    enabled: true
+    weight: 0.11
+    target: 85
+    tools:
+      - custom-checks       # Error recovery tests
+      - pytest              # Python
+      - jest                # JavaScript
+
+  documentation:
+    enabled: true
+    weight: 0.13
+    target: 85
+    tools:
+      - pydocstyle         # Python
+      - jsdoc              # JavaScript
+      - rustdoc            # Rust
+      - javadoc            # Java
+
+# Score calculation
+scoring:
+  # Tool score + LLM score reconciliation
+  reconcile_method: "min"  # Use minimum of tool vs LLM
+
+  # Evidence requirements
+  evidence_threshold: 10   # Points require diff/tool evidence
+  tool_diff_min_lines: 3   # Min lines of diff for evidence
+  cap_unsupported_delta: 3  # Max Δ without evidence
+
+  # Bias detection
+  regression_detection: true
+  revert_on_regression: true
+
+# Evaluation protocol
+evaluation:
+  # Per-dimension settings
+  tool_first: true        # Prioritize tool outputs
+  evidence_required: true # All findings must have evidence
+
+  # LLM interaction
+  per_dimension_depth: "thorough"  # research|standard|thorough
+  explain_gaps: true               # LLM explains failing dimensions
