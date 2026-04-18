@@ -1,0 +1,259 @@
+# Advanced config: all 16 quality dimensions.
+# The standard 9 (config.example.yaml) + 7 extended dims.
+#
+# IMPORTANT: extended dims are disabled by default.
+# Read the prerequisite comments before enabling each one.
+# Weights are auto-normalised across enabled dims by config_loader.py.
+
+target:
+  type: folder            # folder | github
+  location: "./"
+  subpath: ""
+  clone_branch: null
+
+rounds: 3
+overall_target: 85
+dimension_target: 80      # slightly lower to account for harder new dims
+
+early_stop:
+  enabled: true
+
+git:
+  commit_per_round: true
+  branch: "quality/auto-research-advanced"
+  push: false
+
+reporting:
+  output_dir: "reports"
+  formats: [markdown, json]
+
+# ─────────────────────────────────────────────────────────────────
+# STANDARD 9 DIMENSIONS
+# ─────────────────────────────────────────────────────────────────
+
+dimensions:
+
+  linting:
+    enabled: true
+    weight: 0.08          # reduced from 0.10 to make room for new dims
+    target: 85
+    tools: [eslint, ruff, flake8, prettier, golangci-lint]
+
+  type_safety:
+    enabled: true
+    weight: 0.10          # reduced from 0.15
+    target: 85
+    tools: [tsc, mypy, pyright]
+
+  test_coverage:
+    enabled: true
+    weight: 0.12          # reduced from 0.20; mutation_testing now shares the load
+    target: 85
+    tools: [pytest-cov, jest, vitest, go-cover]
+    statement_target: 80
+    branch_target: 75
+    function_target: 85
+
+  security:
+    enabled: true
+    weight: 0.10          # reduced from 0.15; supply_chain shares the load
+    target: 90            # raised: supply_chain adds assurance
+    tools: [bandit, semgrep, trivy, gitleaks, npm-audit]
+
+  performance:
+    enabled: true
+    weight: 0.08
+    target: 80
+    tools: [radon-cc]
+    max_cyclomatic_complexity: 10
+
+  architecture:
+    enabled: true
+    weight: 0.08
+    target: 80
+    tools: [llm-judge]
+
+  readability:
+    enabled: true
+    weight: 0.08
+    target: 80
+    tools: [radon-mi, eslint-complexity]
+    max_function_lines: 50
+    max_file_lines: 800
+    max_nesting_depth: 4
+
+  error_handling:
+    enabled: true
+    weight: 0.04
+    target: 80
+    tools: [llm-judge]
+
+  documentation:
+    enabled: true
+    weight: 0.04
+    target: 80
+    tools: [interrogate, llm-judge]
+
+# ─────────────────────────────────────────────────────────────────
+# EXTENDED 7 DIMENSIONS
+# Each is disabled by default. Enable only when prerequisites are met.
+# ─────────────────────────────────────────────────────────────────
+
+  mutation_testing:
+    enabled: false
+    # PREREQUISITES:
+    #   - Test suite already exists (coverage >= 70%)
+    #   - Test suite runs in < 10 min (mutation multiplies runtime)
+    #   - Tool installed: pip install mutmut OR npm i -g stryker-cli
+    # WHAT IT ADDS: measures whether tests can *catch* bugs, not just execute code.
+    #               Coverage 85% + mutation score 20% = mostly dead tests.
+    # INSTALL: pip install mutmut   # Python
+    #          npm i -g @stryker-mutator/core   # JS/TS
+    weight: 0.10
+    target: 70            # mutation score is harder to reach than coverage %
+    tools: [mutmut, stryker]
+    timeout_min: 60       # mutation can be slow; cap to 60 min per round
+    config:
+      mutmut_run: "mutmut run --no-progress"
+      stryker_run: "npx stryker run"
+
+  property_testing:
+    enabled: false
+    # PREREQUISITES:
+    #   - Project has pure functions or stateless logic worth testing
+    #   - Developer writes at least one @given/@property decorator per module
+    #     (the skill generates properties; a human should review them)
+    #   - Tool installed: pip install hypothesis  OR  npm i fast-check
+    # WHAT IT ADDS: validates "for ALL inputs satisfying P, test F holds".
+    #               Finds edge cases example-based tests miss.
+    # CAUTION: LLM-generated properties can themselves be wrong.
+    #          Always review generated property files before committing.
+    # INSTALL: pip install hypothesis   # Python
+    #          npm i fast-check         # JS/TS
+    weight: 0.06
+    target: 75
+    tools: [hypothesis, fast-check]
+    config:
+      hypothesis_settings: "max_examples=200"
+      fast_check_runs: 200
+
+  fuzzing:
+    enabled: false
+    # PREREQUISITES:
+    #   - Project has parsers, binary handlers, or protocol implementations
+    #   - Compiled with sanitizers (AddressSanitizer, MemorySanitizer)
+    #   - Python: pip install atheris  |  Java: jazzer in classpath
+    # WHAT IT ADDS: finds crashes, memory corruption, infinite loops via
+    #               random/malformed input. Not useful for pure business logic.
+    # CAUTION: fuzzing runs for hours; set max_duration_min accordingly.
+    #          Requires sanitizer-enabled build — not your normal binary.
+    # INSTALL: pip install atheris   # Python
+    #          # Java: download jazzer from github.com/CodeIntelligenceTesting/jazzer
+    weight: 0.06
+    target: 70            # score = % of fuzz targets without crash in max_duration
+    tools: [atheris, jazzer]
+    config:
+      max_duration_min: 30
+      corpus_dir: ".fuzz-corpus"
+      targets_glob: "**/fuzz_*.py"
+
+  license_compliance:
+    enabled: false
+    # PREREQUISITES:
+    #   - Project has package.json, requirements.txt, go.mod, or Gemfile
+    #   - Your org has a defined license policy (see allowed_licenses below)
+    # WHAT IT ADDS: scans transitive deps for GPL-in-MIT conflicts, unknown
+    #               licenses, and policy violations. Fully automatable.
+    # INSTALL: pip install scancode-toolkit   # or use fossa SaaS
+    weight: 0.07
+    target: 90
+    tools: [scancode, fossa]
+    config:
+      # Define your policy. Common choices:
+      # permissive: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense]
+      # no-copyleft: above + exclude GPL, LGPL, AGPL, MPL
+      allowed_licenses:
+        - MIT
+        - Apache-2.0
+        - BSD-2-Clause
+        - BSD-3-Clause
+        - ISC
+        - Unlicense
+        - LGPL-2.1  # include if dynamic linking is your model
+      deny_licenses:
+        - GPL-2.0
+        - GPL-3.0
+        - AGPL-3.0
+      fail_on_unknown: false   # true for strict compliance environments
+
+  accessibility:
+    enabled: false
+    # PREREQUISITES:
+    #   - Project has a frontend (HTML / React / Vue / Angular)
+    #   - Browser automation available (Playwright or Puppeteer)
+    #   - Tool installed: npm i -g axe-cli pa11y
+    # WHAT IT ADDS: automated WCAG 2.1 AA violation detection (~30% of
+    #               all a11y issues). The other 70% require real human
+    #               testing with assistive technology.
+    # NOTE: a score of 85 here = no automated violations, NOT full a11y.
+    # INSTALL: npm i -g @axe-core/cli pa11y
+    weight: 0.05
+    target: 85
+    tools: [axe-core, pa11y]
+    config:
+      wcag_level: "AA"        # A | AA | AAA
+      base_url: "http://localhost:3000"
+      urls:
+        - "/"
+        - "/login"
+        - "/dashboard"         # extend to cover critical user flows
+      runner: axe              # axe | htmlcs
+
+  observability:
+    enabled: false
+    # PREREQUISITES:
+    #   - Project uses a logging library (structlog, winston, zap, etc.)
+    #   - Key paths are instrumented with metrics or traces
+    # WHAT IT ADDS: LLM-judges source code for:
+    #   - log statements have sufficient context (no "error occurred")
+    #   - error paths are logged before propagating
+    #   - sensitive data not leaked in logs (passwords, tokens, PII)
+    #   - critical paths have trace spans
+    # IMPORTANT: this evaluates SOURCE CODE, not production signals.
+    #            A score of 85 = code looks instrumented, NOT
+    #            that the signals are actually useful in production.
+    weight: 0.05
+    target: 75            # lower target: pure LLM-judge, no mechanical verification
+    tools: [llm-judge]
+    config:
+      log_libraries: [structlog, logging, winston, zap, logrus, slog]
+      trace_libraries: [opentelemetry, jaeger, datadog-tracer]
+      check_pii_in_logs: true
+      check_error_context: true
+      check_trace_coverage: true
+
+  supply_chain:
+    enabled: false
+    # PREREQUISITES:
+    #   - Docker image, npm package, or language package available
+    #   - syft + grype installed: brew install syft grype
+    #   - For sigstore attestation: CI/CD pipeline with OIDC support
+    # WHAT IT ADDS:
+    #   - SBOM (Software Bill of Materials) generation via syft
+    #   - CVE scan of the SBOM via grype
+    #   - Sigstore artifact signing verification (if attested)
+    # SCORING:
+    #   - 100 = SBOM generated, 0 known CVEs, artifact signature verified
+    #   - -10 per medium CVE, -20 per high, -40 per critical
+    #   - -20 if SBOM cannot be generated
+    #   - -30 if no sigstore attestation (when CI is configured)
+    # INSTALL: brew install syft grype
+    #          # sigstore: github.com/sigstore/cosign
+    weight: 0.07
+    target: 85
+    tools: [sigstore, syft, grype]
+    config:
+      sbom_format: cyclonedx  # cyclonedx | spdx
+      grype_fail_on: high      # critical | high | medium
+      sigstore_verify: false   # true only if CI attests builds
+      image_or_dir: "./"       # or "myimage:latest" for container scan
