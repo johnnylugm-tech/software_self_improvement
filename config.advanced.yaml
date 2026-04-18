@@ -1,5 +1,5 @@
 # Harness Quality Framework - Advanced Configuration
-# 10 core + 7 extended dimensions
+# 12 core + 5 extended dimensions
 # Use for: Critical systems, compliance-required projects, maximum quality assurance
 
 version: "1.0"
@@ -14,10 +14,11 @@ workspace:
   work_dir: ".sessi-work"
   preserve_git: true
 
-# All 17 dimensions (10 core + 7 extended)
+# All 17 dimensions (12 core + 5 extended)
 dimensions:
 
-  # === CORE DIMENSIONS (10) ===
+  # === CORE DIMENSIONS (12) ===
+  # All enabled by default. Weights auto-normalized by config_loader.py.
 
   linting:
     enabled: true
@@ -41,7 +42,7 @@ dimensions:
 
   test_coverage:
     enabled: true
-    weight: 0.12
+    weight: 0.13
     target: 80
     tools:
       - coverage
@@ -61,7 +62,7 @@ dimensions:
 
   performance:
     enabled: true
-    weight: 0.08
+    weight: 0.07
     target: 80
     tools:
       - pytest-benchmark
@@ -71,7 +72,7 @@ dimensions:
 
   architecture:
     enabled: true
-    weight: 0.08
+    weight: 0.07
     target: 80
     tools:
       - sonarqube
@@ -80,7 +81,7 @@ dimensions:
 
   readability:
     enabled: true
-    weight: 0.07
+    weight: 0.06
     target: 85
     tools:
       - radon
@@ -108,31 +109,31 @@ dimensions:
 
   secrets_scanning:
     enabled: true
-    weight: 0.07
-    target: 100            # Zero tolerance: any secret leak = failure
+    weight: 0.08
+    target: 100
     tools:
-      - detect-secrets     # Inline scan + baseline management (700+ secret types)
-      - gitleaks           # Full git history deep scan + entropy analysis
-    # Distinct from 'security' (code patterns: SQLi, XSS, eval, dependency CVEs)
-    # Covers: API keys, tokens, private keys, connection strings, cloud credentials
-    # Scans: current codebase + entire git commit history
-
-  # === EXTENDED DIMENSIONS (7) ===
-  # These are DISABLED by default. Enable individually based on your needs.
-  # Each has prerequisites listed below.
+      - detect-secrets
+      - gitleaks
 
   mutation_testing:
-    enabled: false
-    # PREREQUISITES: coverage >= 70%, tests run < 10 min
-    weight: 0.10
+    enabled: true
+    weight: 0.08
     target: 70
+    time_budget_seconds: 300  # 5-min cap per round
     tools:
-      - mutmut              # Python
-      - stryker             # Multi-language
-    description: |
-      Validates test suite quality by injecting code mutations.
-      Reveals coverage gaps and weak assertions.
-      High priority: do first if enabling extended dims.
+      - mutmut
+      - stryker
+
+  license_compliance:
+    enabled: true
+    weight: 0.06
+    target: 95
+    tools:
+      - scancode-toolkit
+      - fossa
+
+  # === EXTENDED DIMENSIONS (5) ===
+  # Disabled by default. Enable individually based on project type.
 
   property_testing:
     enabled: false
@@ -145,7 +146,6 @@ dimensions:
     description: |
       Generates edge case test data automatically.
       Finds subtle bugs in business logic.
-      Medium priority: enables after mutation testing.
 
   fuzzing:
     enabled: false
@@ -157,47 +157,31 @@ dimensions:
       - jazzer              # Java/JVM
     description: |
       Continuous input mutation for crash discovery.
-      Finds buffer overflows, parsing bugs.
-      Medium priority: critical for security-sensitive code.
-
-  license_compliance:
-    enabled: false
-    # PREREQUISITES: None (can run anytime)
-    weight: 0.05
-    target: 95
-    tools:
-      - scancode            # License scanner
-      - fossa               # Dependency tracking
-    description: |
-      Tracks and verifies open source license compatibility.
-      Prevents GPL/proprietary conflicts.
-      Low priority: governance requirement.
+      Critical for parsers, APIs, security-sensitive code.
 
   accessibility:
     enabled: false
-    # PREREQUISITES: readability >= 80% (UI code only)
+    # PREREQUISITES: readability >= 80% — UI/web projects only
     weight: 0.06
     target: 85
     tools:
-      - pa11y               # Automated a11y testing
-      - axe-core            # Accessibility engine
+      - pa11y
+      - axe-core
     description: |
       Detects WCAG 2.1 Level AA violations.
-      Mandatory for public-facing UIs.
-      Medium priority: legal + UX requirement.
+      Mandatory for public-facing UIs; not applicable to backends/CLIs.
 
   observability:
     enabled: false
-    # PREREQUISITES: None (can run anytime)
+    # PREREQUISITES: None
     weight: 0.05
     target: 80
     tools:
-      - syft                # SBOM generator
-      - grype               # Vulnerability scanner
+      - syft
+      - grype
     description: |
-      Detects gaps in logging, metrics, tracing.
-      Assesses production readiness.
-      Low priority: hardening + operations.
+      SBOM generation + vulnerability scanning.
+      Production readiness: logging, metrics, tracing gaps.
 
   supply_chain_security:
     enabled: false
@@ -205,11 +189,10 @@ dimensions:
     weight: 0.06
     target: 80
     tools:
-      - cosign              # Artifact signing
+      - cosign
     description: |
-      Verifies artifact signatures and provenance.
-      Ensures code integrity in CI/CD.
-      Low priority: security posture.
+      Artifact signature verification and provenance.
+      Required for published packages and CI/CD pipelines.
 
 # Score calculation (same across core and extended)
 scoring:
@@ -226,15 +209,12 @@ evaluation:
   per_dimension_depth: "thorough"
   explain_gaps: true
 
-# Installation guide for extended dimensions
+# Extended dimensions setup
 extended_dims_setup: |
   Extended dimensions require additional tool installation.
   See docs/INSTALL_EXTENDED_DIMS.md for detailed steps.
 
-  Quick install by priority:
-  - HIGH:   ./scripts/install_extended_tools.sh --high
-  - MEDIUM: ./scripts/install_extended_tools.sh --medium
-  - LOW:    ./scripts/install_extended_tools.sh --low
-  - ALL:    ./scripts/install_extended_tools.sh --all
+  Quick install:
+  - ./scripts/install_extended_tools.sh --all
 
   After install, change 'enabled: false' to 'enabled: true' for desired dims.
