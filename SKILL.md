@@ -1,11 +1,13 @@
 ---
 name: software-self-improvement
-description: Auto-research–style loop that iteratively improves software quality on a GitHub repo or local folder across configurable dimensions (linting, type safety, test coverage, security, performance, architecture, readability, error handling, documentation). Runs up to N rounds (default 3) with early-stop when all targets are met (default 85/100 per dimension and overall). Trigger when the user asks to "auto-improve code quality", "self-improve this repo", "run quality rounds", "raise the codebase to 85/90", or supplies a quality config YAML with dimension targets.
+description: Auto-research–style loop that iteratively improves software quality on a GitHub repo or local folder across configurable dimensions (linting, type safety, test coverage, security, performance, architecture, readability, error handling, documentation). Runs up to N rounds (default 3) with early-stop when all targets are met (default 85/100 per dimension and overall). Defends against self-evaluation bias with evidence-gated scoring and a deterministic verify step. Trigger when the user asks to "auto-improve code quality", "self-improve this repo", "run quality rounds", "raise the codebase to 85/90", or supplies a quality config YAML with dimension targets.
 ---
 
 # Software Self-Improvement
 
 Auto-research–style quality-improvement loop for a target codebase. Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch): edit → evaluate → keep-or-revert, under a fixed budget.
+
+The same agent that edits code also scores it. This skill treats that as a threat model, not a feature. Tool scores are canonical, every claimed gain > 10 points must be backed by evidence (tool-output diff, git file change, or cited code), and a deterministic `verify.py` caps unsupported gains before they can drive early-stop. See [docs/ANTI_BIAS.md](docs/ANTI_BIAS.md).
 
 ## Inputs
 
@@ -20,14 +22,12 @@ Follow these steps exactly. Do not skip, reorder, or "optimise" by batching.
 
 ### Step 1 — Resolve config
 
-Create a work directory: `mkdir -p .sessi-work reports`.
-
-Run the loader:
 ```bash
+mkdir -p .sessi-work reports
 python scripts/config_loader.py <config-path-or-empty> > .sessi-work/config.json
 ```
 
-Read the JSON. Validate: `target`, `rounds`, `overall_target`, `dimensions` (with `normalized_weight` and `target`) are present.
+Validate: `target`, `rounds`, `overall_target`, `dimensions` (with `normalized_weight` and `target`) are present.
 
 ### Step 2 — Resolve target
 
@@ -37,47 +37,87 @@ From `config.target`:
 
 Capture stdout as `TARGET_PATH`. All subsequent file operations happen under `TARGET_PATH`.
 
-If target is a git repo and `git.commit_per_round: true`, create the working branch:
+Ensure it's a git repo (the verify step requires it):
+
+```bash
+if [ ! -d "$TARGET_PATH/.git" ]; then
+  git -C "$TARGET_PATH" init -q
+  git -C "$TARGET_PATH" add -A
+  git -C "$TARGET_PATH" -c user.name=skill -c user.email=skill@local commit -qm "baseline"
+fi
+```
+
+If `git.commit_per_round: true`, create/checkout the working branch:
+
 ```bash
 git -C "$TARGET_PATH" checkout -B "<config.git.branch>"
 ```
 
+Tag the absolute baseline: `git -C "$TARGET_PATH" tag -f baseline`.
+
 ### Step 3 — For round = 1 .. rounds
+
+Each round lives under `.sessi-work/round_<n>/` with subdirs `scores/` and `tools/`.
 
 #### 3a. Evaluate
 
-For each **enabled** dimension in `config.dimensions`:
-1. Read [`prompts/evaluate_dimension.md`](prompts/evaluate_dimension.md).
-2. Apply its protocol to `TARGET_PATH` for this dimension.
-3. Write `.sessi-work/scores/<dimension>.json` with `{dimension, score, findings, gaps, tool_outputs}`.
+Read [`prompts/evaluate_dimension.md`](prompts/evaluate_dimension.md). For each **enabled** dimension:
 
-Assemble `.sessi-work/scores.json` as a flat `{dimension_name: score_int}` object.
+1. Run its tools, **tee raw output to `.sessi-work/round_<n>/tools/<dim>.txt`** (the verify step needs these).
+2. Apply the tool-first + evidence protocol to produce `.sessi-work/round_<n>/scores/<dim>.json`.
+3. Reconcile: `final_score = min(tool_score, llm_score)` when both exist.
+
+Assemble `.sessi-work/round_<n>/scores.json` as `{dimension_name: score_int}`.
 
 #### 3b. Score
 
 ```bash
-python scripts/score.py --scores .sessi-work/scores.json --config .sessi-work/config.json > .sessi-work/result.json
+python scripts/score.py \
+  --scores .sessi-work/round_<n>/scores.json \
+  --config .sessi-work/config.json \
+  > .sessi-work/round_<n>/result.json
 ```
 
-#### 3c. Checkpoint
+#### 3c. Verify (rounds ≥ 2 only)
+
+For round 1, skip — there's no pre to compare against; use `result.json` directly as the verified result.
+
+For rounds ≥ 2, read [`prompts/verify_round.md`](prompts/verify_round.md) and run:
 
 ```bash
-python scripts/checkpoint.py --round <n> --result .sessi-work/result.json --reports-dir reports --out reports/round_<n>.md
+python scripts/verify.py \
+  --pre  .sessi-work/round_<n-1>/result.json \
+  --post .sessi-work/round_<n>/result.json \
+  --target "$TARGET_PATH" \
+  --pre-tools  .sessi-work/round_<n-1>/tools \
+  --post-tools .sessi-work/round_<n>/tools \
+  --ref-from round_<n>_start --ref-to HEAD \
+  > .sessi-work/round_<n>/verified.json
 ```
 
-#### 3d. Early-stop
+Apply the LLM cross-check protocol from `verify_round.md` for any capped dimensions or regressions. The file written at the end of this step is the **authoritative** result for the round — downstream reads only from it.
 
-If `result.meets_target` is `true`, log `"Early stop at round <n>: targets met."` and jump to Step 4.
+#### 3d. Checkpoint (using the authoritative result)
 
-#### 3e. Improve (skip on the very last round if `meets_target` is false — still checkpoint)
+```bash
+# round 1: result.json IS the authoritative result
+# rounds >= 2: verified.json
+python scripts/checkpoint.py --round <n> \
+  --result .sessi-work/round_<n>/<verified-or-result>.json \
+  --reports-dir reports --out reports/round_<n>.md
+```
 
-1. Read [`prompts/improvement_plan.md`](prompts/improvement_plan.md).
-2. Apply its protocol to produce a prioritised patch plan against `result.failing_dimensions`.
-3. Execute edits with Edit/Write/Bash tools on files **inside `TARGET_PATH` only**.
-4. If `git.commit_per_round: true` and target is a git repo:
-   ```bash
-   git -C "$TARGET_PATH" add -A && git -C "$TARGET_PATH" commit -m "round <n>: quality improvements"
-   ```
+#### 3e. Early-stop
+
+If authoritative `meets_target` is `true`, log `"Early stop at round <n>: targets met."` and jump to Step 4. **Never early-stop on an unverified result** — if `verify.py` capped something that flipped `meets_target` from true to false, continue rounds.
+
+#### 3f. Improve (skip on the very last round — still checkpoint above)
+
+Read [`prompts/improvement_plan.md`](prompts/improvement_plan.md).
+
+1. Tag start point: `git -C "$TARGET_PATH" tag -f round_<n+1>_start`.
+2. Apply its protocol: rank failing dims by impact, pick ≤ 3 mechanical fixes per dim, **verify each fix individually by re-running the tool** (revert the fix if the tool regresses or is unchanged), commit each accepted fix separately.
+3. Never modify files outside `TARGET_PATH`.
 
 Continue the loop.
 
@@ -87,13 +127,17 @@ Continue the loop.
 python scripts/checkpoint.py --final --reports-dir reports --out reports/FINAL.md
 ```
 
-Report back to the user: the path to `reports/FINAL.md`, the final overall score vs target, and a one-paragraph summary of per-dimension trajectories.
+Report back to the user: the path to `reports/FINAL.md`, the final overall score vs target, and a one-paragraph summary that explicitly mentions:
+- Any capped dimensions (surfaced by `verify.py`)
+- Any regressions that triggered reverts
+- Per-dimension trajectories
 
-## Rules
+## Rules (non-negotiable)
 
 - Never touch files outside `TARGET_PATH`.
 - Never `git push` unless `git.push: true` AND the user has authorised it in this session.
-- Never weaken tests to inflate coverage — add real tests.
+- Never weaken tests, broaden `except`, or add `@ts-ignore` / `# type: ignore` to inflate scores.
+- Never early-stop on an unverified raw `result.json` from round ≥ 2.
 - Skip disabled dimensions entirely: do not score, do not improve for them.
-- Early-stop gates on **both** overall ≥ `overall_target` AND every enabled dimension ≥ its own `target`.
-- Do not mutate the skill's own config or scripts during a run.
+- Do not mutate the skill's own config, scripts, or prompts during a run.
+- Raw tool output for every dimension in every round MUST be persisted to `.sessi-work/round_<n>/tools/<dim>.txt` — this is what lets verify.py detect artificial gains.

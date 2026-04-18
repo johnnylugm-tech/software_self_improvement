@@ -1,6 +1,15 @@
 # Dimension Evaluation Prompt
 
-Applied once per **enabled** dimension, per round. Produces a scored JSON object Claude writes to `.sessi-work/scores/<dimension>.json`.
+Applied once per **enabled** dimension, per round. Produces a scored JSON object Claude writes to `.sessi-work/round_<n>/scores/<dimension>.json`, plus raw tool output to `.sessi-work/round_<n>/tools/<dimension>.txt`.
+
+## CRITICAL: Tool-first hierarchy (anti-self-deception)
+
+The same agent that will edit code also scores it. To stop the scoring drift this invites:
+
+1. **Tool scores are canonical** for every dimension that has a usable static analyser. Run the tool, derive a score from its output, record it. LLM judgement only **supplements** tool scores — it cannot override them upward.
+2. **Reconcile rule**: `final_score = min(tool_score, llm_score)` when both exist. If they diverge by more than 15, prefer the tool score. LLM-only score is used only when no tool ran (architecture, error_handling, or tool install failure).
+3. **Evidence requirement**: every `findings` entry and every score claim must cite concrete evidence — a tool output line, a `file:line` reference, or a quoted code fragment. No vibes-based scoring.
+4. **Persist raw tool output** to `.sessi-work/round_<n>/tools/<dimension>.txt`. The verify step reads these to detect artificial gains in later rounds.
 
 ## Output shape
 
@@ -8,21 +17,26 @@ Applied once per **enabled** dimension, per round. Produces a scored JSON object
 {
   "dimension": "<name>",
   "score": 0,
-  "findings": ["specific issue 1", "specific issue 2"],
-  "gaps": ["what prevents a higher score"],
-  "tool_outputs": {"<tool-name>": "<raw or summarised output>"}
+  "tool_score": 0,
+  "llm_score": 0,
+  "findings": [
+    {"severity": "high|med|low", "evidence": "file.ts:45 — unused import 'foo'"}
+  ],
+  "gaps": ["prescriptive next-step, e.g. 'add integration tests for UserService.update'"],
+  "tool_outputs": {"<tool>": "<raw summary or path to raw file>"},
+  "reconcile": "chose tool (tool=82 vs llm=90)"
 }
 ```
 
-`score` is an integer in `[0, 100]`. Findings are concrete (file:line when possible). Gaps are prescriptive ("add integration tests for UserService.update").
+`score` is an integer in `[0, 100]`. `tool_score` is `null` if no tool ran. `llm_score` is `null` if tool coverage was complete and LLM judgement wasn't needed.
 
 ## Protocol
 
 ### 1. Run configured tools first
 
-Iterate `dimensions.<name>.tools` from the resolved config. For each tool, detect whether the target project supports it (file markers below). If yes, invoke via Bash, capture stdout+stderr, and parse.
+Iterate `dimensions.<name>.tools`. For each, detect project support (markers below). If yes, run via Bash, **tee stdout+stderr into `.sessi-work/round_<n>/tools/<dimension>.txt`**, and parse.
 
-| Tool | Project markers | Example invocation |
+| Tool | Project markers | Invocation |
 |---|---|---|
 | eslint | `package.json`, `.eslintrc*` | `npx eslint . --format json` |
 | prettier | `.prettierrc*` | `npx prettier --check .` |
@@ -36,7 +50,7 @@ Iterate `dimensions.<name>.tools` from the resolved config. For each tool, detec
 | jest | `package.json` jest entry | `npx jest --coverage --json` |
 | vitest | `vitest.config.*` | `npx vitest run --coverage` |
 | go-cover | `go.mod` | `go test ./... -coverprofile=c.out && go tool cover -func=c.out` |
-| bandit | `pyproject.toml` / python files | `bandit -q -r . -f json` |
+| bandit | python | `bandit -q -r . -f json` |
 | semgrep | any | `semgrep --config auto --json` |
 | trivy | Dockerfile / deps | `trivy fs --format json .` |
 | gitleaks | any | `gitleaks detect --no-banner --report-format json` |
@@ -44,51 +58,53 @@ Iterate `dimensions.<name>.tools` from the resolved config. For each tool, detec
 | radon-mi | python | `radon mi -j .` |
 | interrogate | python | `interrogate -q -f 0` |
 
-Store each tool's parsed summary into `tool_outputs`. Don't fail the round if a tool isn't installed — just note it and move on.
+A missing tool is not a failure — note it in `tool_outputs` and fall through to LLM-only. A failing tool run (non-2 exit code) **does** count; record its output and use a neutral `tool_score = 50` rather than inventing one.
 
 ### 2. Mechanical sub-score (tool-driven)
 
-Apply the mapping for the dimension. Clamp to `[0, 100]`.
+Apply the mapping, clamp to `[0, 100]`.
 
 - **linting**: `100 − min(errors × 3 + warnings, 100)`
-- **type_safety**: `100 − min(type_errors × 4, 100)`; +5 if strict mode is on
-- **test_coverage**: average of `statement_pct`, `branch_pct`, `function_pct`; if only one metric is available, use it
+- **type_safety**: `100 − min(type_errors × 4, 100)`; `+5` if strict mode is on
+- **test_coverage**: average of `statement_pct`, `branch_pct`, `function_pct` (use whichever are available)
 - **security**: `100 − min(critical × 20 + high × 10 + medium × 3 + low × 1, 100)`
 - **performance**: `100 − min(functions_over_max_cyclomatic_complexity × 5, 100)`
-- **readability**: `radon_mi` (0–100 scale); penalise −5 per file exceeding `max_file_lines`, −3 per function exceeding `max_function_lines`
-- **documentation**: `interrogate_coverage_pct` (if available)
-- **architecture**: no mechanical tool — LLM-only
-- **error_handling**: no mechanical tool — LLM-only
+- **readability**: radon MI (0–100 scale); penalise −5 per file over `max_file_lines`, −3 per function over `max_function_lines`
+- **documentation**: interrogate coverage %
+- **architecture**: no mechanical tool — `tool_score = null`
+- **error_handling**: no mechanical tool — `tool_score = null`
 
-### 3. LLM sub-score (Claude judgement)
+Record `tool_score` in the output.
 
-For `architecture` and `error_handling`, and as a sanity check on every dimension, read 5–15 representative files (entry points, services/controllers, shared utilities, tests). Start from 100 and subtract per distinct systemic issue:
+### 3. LLM sub-score (with evidence)
+
+Required for: `architecture`, `error_handling`.
+Useful as supplement for: all others.
+
+Read 5–15 representative files (entry points, services/controllers, shared utilities, tests). Start from 100 and subtract per **distinct systemic issue, each with a concrete file:line citation**:
 
 - Minor (stylistic, single-file): −3
-- Moderate (pattern repeated in a few files): −8
-- Severe (affects a whole module or crosses layers): −15
-- Critical (breaks a principle the framework names): −25
+- Moderate (pattern in a few files): −8
+- Severe (affects a module, crosses layers): −15
+- Critical (breaks a named principle): −25
 
-Dimension criteria:
+Every deduction must appear in `findings` with its `evidence` field. A deduction without evidence is invalid and must be removed.
 
-- **linting** — formatting compliance, unused vars/imports, unreachable/dead code, deprecated APIs
-- **type_safety** — implicit `any`, missing annotations, `@ts-ignore` / `# type: ignore` prevalence, nullable handling
-- **test_coverage** — meaningful tests (not smoke), critical-path coverage, happy + error cases
-- **security** — hardcoded secrets, missing input validation, SQLi/XSS vectors, weak authn/authz, vulnerable deps
-- **performance** — N+1, unbounded loops, missing caching, hot-path allocations, function complexity > 10
-- **architecture** — separation of concerns, SOLID, cyclic deps, DRY, layering
-- **readability** — naming, function length ≤ 50, nesting ≤ 4, file length ≤ 800, comment/docstring quality on tricky blocks
-- **error_handling** — swallowed exceptions, over-broad `except Exception` / `catch (e)`, uninformative messages, propagation
-- **documentation** — public API docs present, README accurate, architecture docs, runnable examples
+Dimension criteria: see `docs/DIMENSIONS.md`.
 
-### 4. Reconcile
+### 4. Reconcile (strict)
 
-Final score:
+```
+if tool_score is None:       final = llm_score
+elif llm_score is None:      final = tool_score
+else:                        final = min(tool_score, llm_score)
+```
 
-- If both mechanical and LLM sub-scores exist and diverge by > 15 → take the **minimum** (pessimistic, matches "no hidden regressions").
-- If only one exists → use it.
-- Clamp to `[0, 100]`.
+The `reconcile` field in the output records which branch was taken. **Never** output `final > tool_score` when a tool ran — that's the drift this rule exists to prevent.
 
 ### 5. Aggregate
 
-After every enabled dimension has produced its JSON, assemble `.sessi-work/scores.json` as `{dimension_name: final_score_int}` for `score.py`.
+After every enabled dimension has produced its JSON:
+
+1. Write `.sessi-work/round_<n>/scores.json` as `{dimension_name: final_score_int}` for `score.py`.
+2. Confirm `.sessi-work/round_<n>/tools/<dim>.txt` exists for every dim that had a tool run — the verify step needs these.
