@@ -166,8 +166,9 @@ Save to `.sessi-work/round_<n>/scores/<dimension>.json`:
   "score": <min(tool_score, llm_score)>,
   "findings": [
     {
+      "file": "<path|null>",
       "line": <int|null>,
-      "severity": "critical|warning|info",
+      "severity": "critical|high|medium|low|info",
       "message": "<description>",
       "evidence": "<tool output excerpt or file:line>"
     }
@@ -177,6 +178,47 @@ Save to `.sessi-work/round_<n>/scores/<dimension>.json`:
   "reconcile": "tool_first"
 }
 ```
+
+**Severity canonicalization:** the registry requires one of `critical|high|medium|low|info`.
+Map legacy tool outputs as: `error/critical → critical`, `warning → medium`, `info/note → info`,
+known CVE high severities → `high`.
+
+---
+
+## Step 4: Register Findings in the Issue Registry
+
+**Every finding from Step 3 MUST be written to the persistent issue registry.**
+This is what makes the tool issue-driven (not score-driven): issues persist across rounds
+until explicitly `fixed`, `deferred` (with reason), or `wontfix` (with reason).
+
+For each finding in the score file:
+
+```bash
+# Write the finding to a temp JSON file with the exact keys: severity, message, file, line, evidence
+echo '{"severity":"high","message":"...","file":"src/foo.py","line":42,"evidence":"..."}' \
+  > /tmp/finding.json
+
+python3 scripts/issue_tracker.py add \
+  .sessi-work/issue_registry.json \
+  <dimension> \
+  <round_num> \
+  /tmp/finding.json
+```
+
+Or equivalently, batch via a small loop over the `findings[]` array in `<dimension>.json`.
+
+**Idempotency guarantee:** the registry hashes `(dimension, file, line, message[:80])` into a
+deterministic ID, so repeating the same finding in round 2 updates `last_seen_round` rather than
+duplicating the entry.
+
+After Step 4 completes for all dimensions, print a registry summary:
+
+```bash
+python3 scripts/issue_tracker.py summary .sessi-work/issue_registry.json
+```
+
+The `open_critical` / `open_high` / `open_medium` counts feed directly into
+`score.py` and the Step 3e early-stop decision in `SKILL.md`.
 
 ---
 

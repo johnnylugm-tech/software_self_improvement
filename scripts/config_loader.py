@@ -14,9 +14,10 @@ from pathlib import Path
 DEFAULT_CONFIG = {
     "version": "1.0",
     "quality": {
-        "target": 85,
+        "score_gate": 85,        # Minimum overall score — not a completion goal
         "max_rounds": 3,
-        "early_stop": True,
+        "early_stop": True,      # Issue-driven: score_gate AND zero open critical/high
+        "saturation_rounds": 3,  # Plateau detection: N rounds with no new issues
         "commit_per_fix": True,
     },
     "workspace": {
@@ -119,15 +120,28 @@ def normalize_weights(config):
 
 def validate_config(config):
     """Validate config values are in valid ranges"""
-    # Validate quality target
-    target = config["quality"]["target"]
-    if not (0 <= target <= 100):
-        raise ValueError(f"quality.target must be 0-100, got {target}")
+    quality = config["quality"]
+
+    # Accept either score_gate (new) or target (legacy). Mirror to both.
+    if "score_gate" not in quality and "target" in quality:
+        quality["score_gate"] = quality["target"]
+    if "target" not in quality and "score_gate" in quality:
+        quality["target"] = quality["score_gate"]  # backward compat alias
+
+    score_gate = quality["score_gate"]
+    if not (0 <= score_gate <= 100):
+        raise ValueError(f"quality.score_gate must be 0-100, got {score_gate}")
 
     # Validate max_rounds
-    max_rounds = config["quality"]["max_rounds"]
+    max_rounds = quality["max_rounds"]
     if max_rounds < 1:
         raise ValueError(f"quality.max_rounds must be >= 1, got {max_rounds}")
+
+    # Validate saturation_rounds
+    saturation_rounds = quality.get("saturation_rounds", 3)
+    if saturation_rounds < 1:
+        raise ValueError(f"quality.saturation_rounds must be >= 1, got {saturation_rounds}")
+    quality["saturation_rounds"] = saturation_rounds
 
     # Validate dimension targets
     for dim_name, dim_config in config["dimensions"].items():

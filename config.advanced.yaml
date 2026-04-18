@@ -5,9 +5,10 @@
 version: "1.0"
 
 quality:
-  target: 85
+  score_gate: 85          # Minimum overall score (0-100) — NOT a completion target
   max_rounds: 3
-  early_stop: true
+  early_stop: true        # Issue-driven: score_gate met AND zero open critical/high
+  saturation_rounds: 3    # Stop if no NEW issues found for N consecutive rounds
   commit_per_fix: true
 
 workspace:

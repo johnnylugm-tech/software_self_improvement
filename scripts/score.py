@@ -4,11 +4,21 @@ Score Aggregation: Computes weighted overall score from per-dimension scores
 
 Identifies failing dimensions sorted by impact (gap × normalized_weight).
 Outputs JSON with overall_score, meets_target, failing_dimensions, breakdown.
+
+Issue-driven completion: surfaces open_critical_count / open_high_count from
+the issue registry so early-stop can gate on quality, not score alone.
 """
 
 import sys
 import json
 from pathlib import Path
+
+# Local import for issue registry integration
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    import issue_tracker
+except ImportError:
+    issue_tracker = None
 
 
 def load_scores(round_dir):
@@ -35,35 +45,33 @@ def load_scores(round_dir):
     return scores
 
 
-def compute_overall_score(scores, config):
+def compute_overall_score(scores, config, registry=None):
     """
     Compute weighted overall score from per-dimension scores
 
     Args:
         scores: dict of dimension_name -> {score, tool_score, llm_score, ...}
         config: resolved config with dimensions and weights
+        registry: optional issue-registry dict for open-issue counts
 
     Returns:
         {
             "overall_score": float (0-100),
-            "meets_target": bool,
-            "target": int,
-            "failing_dimensions": [
-                {"dimension": "...", "score": X, "gap": Y, "impact": Z, "weight": W}
-            ],
-            "breakdown": {
-                "dimension_name": {
-                    "score": float,
-                    "weight": float,
-                    "weighted_score": float,
-                    "target": int,
-                    "gap": int
-                }
-            }
+            "meets_target": bool,          # score gate only
+            "quality_complete": bool,      # score gate AND no open critical/high
+            "score_gate": int,
+            "open_critical_count": int,
+            "open_high_count": int,
+            "open_medium_count": int,
+            "open_total": int,
+            "failing_dimensions": [...],
+            "breakdown": {...}
         }
     """
     dimensions = config["dimensions"]
-    target = config["quality"]["target"]
+    # Support both legacy `target` and new `score_gate` naming
+    quality_cfg = config.get("quality", {})
+    score_gate = quality_cfg.get("score_gate", quality_cfg.get("target", 85))
 
     breakdown = {}
     weighted_sum = 0
@@ -117,10 +125,28 @@ def compute_overall_score(scores, config):
     # Sort by impact descending
     failing.sort(key=lambda x: x["impact"], reverse=True)
 
+    # Issue-registry integration (issue-driven completion)
+    open_critical = open_high = open_medium = open_total = 0
+    if registry is not None and issue_tracker is not None:
+        s = issue_tracker.summary(registry)
+        open_critical = s.get("open_critical", 0)
+        open_high = s.get("open_high", 0)
+        open_medium = s.get("open_medium", 0)
+        open_total = s.get("open_total", 0)
+
+    meets_score_gate = overall_score >= score_gate
+    quality_complete = meets_score_gate and open_critical == 0 and open_high == 0
+
     return {
         "overall_score": round(overall_score, 2),
-        "target": target,
-        "meets_target": overall_score >= target,
+        "score_gate": score_gate,
+        "target": score_gate,  # legacy alias for backward compat
+        "meets_target": meets_score_gate,
+        "quality_complete": quality_complete,
+        "open_critical_count": open_critical,
+        "open_high_count": open_high,
+        "open_medium_count": open_medium,
+        "open_total": open_total,
         "failing_dimensions": failing,
         "breakdown": breakdown,
     }
@@ -128,13 +154,15 @@ def compute_overall_score(scores, config):
 
 def main():
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <round_dir> [config.json]")
+        print(f"Usage: {sys.argv[0]} <round_dir> [config.json] [issue_registry.json]")
         print("  round_dir: path to .sessi-work/round_<n>")
         print("  config.json: resolved config (optional, uses defaults if omitted)")
+        print("  issue_registry.json: persistent issue registry (optional)")
         sys.exit(1)
 
     round_dir = sys.argv[1]
     config_path = sys.argv[2] if len(sys.argv) > 2 else None
+    registry_path = sys.argv[3] if len(sys.argv) > 3 else None
 
     try:
         # Load scores
@@ -147,15 +175,25 @@ def main():
         else:
             # Use minimal defaults if no config provided
             config = {
-                "quality": {"target": 85},
+                "quality": {"score_gate": 85},
                 "dimensions": {
                     dim: {"enabled": True, "weight": 1.0 / len(scores)}
                     for dim in scores.keys()
                 },
             }
 
+        # Load issue registry (optional but recommended)
+        registry = None
+        if registry_path and Path(registry_path).exists() and issue_tracker is not None:
+            registry = issue_tracker.load(registry_path)
+        elif issue_tracker is not None:
+            # Default location: <round_dir>/../issue_registry.json
+            default_reg = Path(round_dir).parent / "issue_registry.json"
+            if default_reg.exists():
+                registry = issue_tracker.load(str(default_reg))
+
         # Compute score
-        result = compute_overall_score(scores, config)
+        result = compute_overall_score(scores, config, registry=registry)
 
         print(json.dumps(result, indent=2))
 

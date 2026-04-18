@@ -1,6 +1,8 @@
 # Auto-Research Quality Improvement Skill
 
-Implements an auto-research-style quality improvement loop for GitHub repos or local folders, with configurable targets across 9 core + 7 optional dimensions.
+Implements an auto-research-style quality improvement loop for GitHub repos or local folders, with configurable targets across 12 core + 5 optional dimensions.
+
+**Design principle:** The goal is **actual quality improvement** — resolving every critical/high issue found — not reaching a numeric score. Scores are a minimum gate; the issue registry is the source of truth for completion.
 
 ## Execution Contract
 
@@ -13,6 +15,7 @@ Implements an auto-research-style quality improvement loop for GitHub repos or l
 ### Step 2: Resolve Target
 - Clone GitHub repo (if URL) or use local folder path
 - Set up working directory with git tracking
+- Initialize issue registry at `.sessi-work/issue_registry.json` (persists across rounds)
 - Output: TARGET_PATH to stdout
 
 ### Step 3: Iterate Rounds (3 default, configurable)
@@ -22,13 +25,17 @@ Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-ea
 - Run per-dimension evaluation: tool-first hierarchy (tool score + LLM score)
 - Reconcile: min(tool_score, llm_score) to prevent optimism bias
 - Evidence requirement: every finding must have evidence (tool output or code change)
+- **Every finding → written to issue registry** via `scripts/issue_tracker.py add`
+  - Idempotent: same finding yields same ID; repeats are de-duplicated
+  - Each issue carries: severity (critical/high/medium/low/info), dimension, file, line, evidence
 - Output: per-dim JSON with scores, findings, tool outputs
 
 **3b. Compute Weighted Score**
 - Aggregate per-dim scores with normalized weights
 - Calculate overall_score (0-100)
+- Surface `open_critical_count`, `open_high_count`, `open_medium_count` from registry
 - Identify failing dimensions sorted by impact (gap × weight)
-- Output: score JSON with breakdown, failing dims, meets_target flag
+- Output: score JSON with breakdown, failing dims, `meets_target`, `quality_complete`
 
 **3c. Verify Round (Anti-Bias Check)**
 - Deterministic verification: compare pre/post tool outputs + git diffs
@@ -39,17 +46,52 @@ Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-ea
 **3d. Checkpoint Round**
 - Snapshot: round_<n>.json with all scores, findings, deltas
 - Mark improvements per dimension
+- Persist `issue_registry.json` snapshot into round folder for audit
 - Commit round results with git tag: `round-<n>`
 - Output: markdown summary for dashboard
 
-**3e. Early-Stop Check**
-- If overall_score ≥ target: stop iteration, report success
-- If no improvements last round: stop, report plateau
-- Otherwise: proceed to 3f
+**3e. Early-Stop Check (Issue-Driven)**
 
-**3f. Improve (Auto-Research)**
-- Rank failing dimensions by impact (gap × weight)
-- For each fix: run tool again post-change, revert if no improvement
+```
+critical_open = registry.summary().open_critical
+high_open     = registry.summary().open_high
+
+IF overall_score >= score_gate AND critical_open == 0 AND high_open == 0:
+    → stop: quality_complete = true  (真正完成)
+
+ELIF overall_score >= score_gate AND (critical_open > 0 OR high_open > 0):
+    → continue: score passed but unresolved critical/high issues remain
+    → DO NOT stop — this is the exact anti-pattern we guard against
+
+ELIF saturation_check(registry, current_round, saturation_rounds=3) == true
+     AND no score improvement in last round:
+    → stop: plateau reached, remaining issues marked deferred
+    → emit deferred_fixes.md for human review
+
+ELSE:
+    → proceed to 3f
+```
+
+Saturation detection: `python3 scripts/issue_tracker.py saturation .sessi-work/issue_registry.json <round>` returns true when no NEW issues were recorded for N consecutive rounds.
+
+**3f. Improve (Issue-Driven)**
+
+Input is the **open-issues queue**, not failing dimensions:
+
+```
+open = issue_tracker.open_issues(registry)  # sorted by severity, then round_found
+
+Priority order:
+  1. ALL open critical issues   (regardless of dimension score)
+  2. ALL open high issues       (regardless of dimension score)
+  3. Open medium issues in failing dimensions (score < target)
+  4. Open low issues if time budget allows
+```
+
+For each fix:
+- Run dimension tool pre/post → revert if no measurable improvement
+- On success: `issue_tracker.py fix <id> <round> "<commit_sha>"`
+- On intentional skip: `issue_tracker.py defer <id> <round> "<reason>"` (reason required)
 - Guardrails: never weaken tests, broaden exception handling, add @ts-ignore
 - One commit per fix
 - Loop to 3a
@@ -61,9 +103,10 @@ Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-ea
 
 ## Default Configuration
 
-- **Rounds:** 3
-- **Target:** 85/100
-- **Early-stop:** enabled
+- **Rounds:** 3 (max)
+- **Score gate:** 85/100 (minimum — not a completion goal)
+- **Early-stop:** issue-driven (score_gate AND zero open critical/high)
+- **Saturation rounds:** 3 (stop if no new issues found for 3 rounds)
 - **Commit strategy:** one per fix
 - **Evidence threshold:** 10 points
 - **Bias cap:** Δ +3 without diff evidence

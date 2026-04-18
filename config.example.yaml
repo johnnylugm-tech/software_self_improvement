@@ -6,10 +6,13 @@ version: "1.0"
 
 # Global settings
 quality:
-  target: 85              # Quality score target (0-100)
+  score_gate: 85          # Minimum overall score (0-100) — NOT a completion target
   max_rounds: 3           # Maximum improvement rounds
-  early_stop: true        # Stop when target reached
+  early_stop: true        # Issue-driven: stop only when score_gate met AND no open critical/high
+  saturation_rounds: 3    # Stop if no NEW issues found for N consecutive rounds (plateau)
   commit_per_fix: true    # One commit per improvement
+  # `target` (legacy) still accepted as alias for score_gate.
+  # Completion requires BOTH: overall_score >= score_gate AND zero open critical/high issues.
 
 # Working environment
 workspace:
