@@ -56,6 +56,32 @@ DEFAULT_CONFIG = {
         "per_dimension_depth": "thorough",
         "explain_gaps": True,
     },
+    "llm_routing": {
+        "enabled": True,
+        "tier1": {
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+            "dimensions": ["linting", "type_safety", "test_coverage",
+                           "secrets_scanning", "license_compliance", "mutation_testing"],
+        },
+        "tier2": {
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+            "dimensions": ["security"],
+        },
+        "tier3": {
+            "provider": "claude_native",
+            "model": "claude",
+            "dimensions": ["architecture", "readability", "error_handling",
+                           "documentation", "performance"],
+        },
+        "improve": {"provider": "claude_native"},
+        "token_budget": {
+            "tier1_input_max": 8000,
+            "tier2_input_max": 10000,
+            "tier3_input_max": 20000,
+        },
+    },
 }
 
 
