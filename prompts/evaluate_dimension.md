@@ -136,18 +136,50 @@ Parse the JSON response. The Gemini response IS the dimension score.
 
 Read tool output from `.sessi-work/round_<n>/tools/<dimension>.txt`.
 
-**Perform full evaluation:**
+**Step 2a (Tier 3 ONLY): Query Code Review Graph for compressed context**
 
-1. **Tool score** — What do the tools report? Extract numeric signal (0-100).
-2. **LLM score** — Your independent assessment from reading the code.
-3. **Reconcile** — `score = min(tool_score, llm_score)` — never inflate.
-4. **Evidence** — Every finding must cite file:line or tool output excerpt.
-5. **Gaps** — What specifically is missing or broken?
+Before reading source code, pull pre-computed structural intel from the CRG
+knowledge graph. This replaces blind code reading with targeted questions:
+
+```bash
+# Ensure graph exists; build if first run
+python3 scripts/crg_integration.py check || echo "CRG not installed — fall back to full read"
+code-review-graph status --repo <repo_path> 2>&1 | grep -q "Nodes: 0" \
+  && code-review-graph build --repo <repo_path>
+```
+
+Then, per dimension, use the corresponding **CRG MCP tools** (available once
+`.mcp.json` is loaded — the `code-review-graph` server exposes 28 tools):
+
+| Dimension | CRG MCP tools to call | What to ask |
+|-----------|----------------------|-------------|
+| `architecture` | `get_hub_nodes` (top 10), `get_bridge_nodes`, `get_knowledge_gaps`, `get_surprising_connections`, `get_architecture_overview` | Layering violations, chokepoints, cyclic dependencies, hub nodes doing too much |
+| `readability` | `find_large_functions`, `get_hub_nodes` | Functions > 100 LOC; hub nodes that have become god-objects |
+| `performance` | `get_hub_nodes`, `list_flows` | Hot paths passing through bottleneck functions |
+| `error_handling` | `get_affected_flows`, `semantic_search_nodes "except\\|catch\\|error"` | Flows without error handlers; try/except placement |
+| `documentation` | `generate_wiki` (first run) or `get_wiki_page`, `get_hub_nodes` | Undocumented hub nodes = highest-priority doc gaps |
+
+**Token-efficient evaluation protocol:**
+
+1. **CRG context (cheap)** — call the MCP tools above; they return structured JSON
+   in ~500-2000 tokens total instead of reading 10,000+ lines of code
+2. **Tool score** — What do the tools report? Extract numeric signal (0-100).
+3. **LLM score** — Your assessment using CRG structural data + spot-reads of
+   specific files/lines identified by CRG as problematic
+4. **Reconcile** — `score = min(tool_score, llm_score)` — never inflate
+5. **Evidence** — Every finding cites file:line from CRG output AND/OR tool output
+6. **Gaps** — Cross-reference CRG knowledge_gaps with tool findings
 
 **Token discipline for Tier 3:**
-- Read only the most relevant code sections (not entire codebase)
-- Use tool output as primary lens; read source only to confirm/locate
+- Read CRG output first; code second (only for files CRG flagged)
+- Spot-read 2-5 specific functions CRG identified as problematic
+- NEVER read whole files if CRG can answer the question
 - Keep findings list ≤ 7 items
+- Target: -30 to -50% token reduction vs pure-code-reading approach
+
+**Graceful degradation:** If CRG is not installed or graph is empty, the
+evaluation still works — just with higher token cost. The framework must
+remain functional without CRG.
 
 ---
 

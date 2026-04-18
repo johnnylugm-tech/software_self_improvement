@@ -20,6 +20,31 @@ Read the output:
 
 **Use `verified.json` for all downstream steps. Never use raw `result.json`.**
 
+### Step 1a (CRG, if available): Structural Verification
+
+Refresh the graph and measure structural drift across the whole round.
+This catches regressions that dimension tools cannot see:
+
+```bash
+# Incremental refresh (seconds — only re-parses changed files)
+code-review-graph update --repo <repo_path>
+
+# Blast radius across all fixes in this round
+python3 scripts/crg_integration.py blast <repo_path> round-<n-1> \
+  > .sessi-work/round_<n>/crg_blast_radius.json
+```
+
+Two classes of regression to escalate:
+
+- **Architectural drift** — `risk_score` jumped > 0.2 between rounds, OR
+  new hub nodes appeared. Log a warning in `verified.json`; if drift > 0.4,
+  treat as regression and trigger Step 3's revert protocol.
+- **Test gap expansion** — `test_gaps` count grew this round. Each new gap
+  adds an `open` issue in the registry (dimension = `test_coverage`,
+  severity = `medium`).
+
+If CRG is not installed this step is skipped silently.
+
 ---
 
 ## Step 2: Handle Capped Dimensions

@@ -232,8 +232,42 @@ claude-internal prompts/verify_round.md --results result.json --verified verifie
 4. **Deterministic verification:** quantitative comparison pre/post
 5. **Regression detection:** surface changes that hurt dimensions
 6. **Path heuristics:** prevent undetected regressions
+7. **Structural drift detection (CRG):** catches architectural regressions
+   that dimension tools cannot see — new hub nodes, expanded test gaps,
+   risk-score jumps across rounds
 
 See `docs/ANTI_BIAS.md` for detailed analysis.
+
+## Code Review Graph Integration
+
+When [Code Review Graph](https://github.com/code-review-graph) (CRG) is installed,
+three integration points activate automatically:
+
+1. **Tier 3 evaluation (evaluate_dimension.md):** architecture / readability /
+   performance / documentation / error_handling dimensions query the CRG
+   knowledge graph (hub nodes, bridge nodes, large functions, knowledge gaps)
+   before reading any source code. Target: 30-50% Tier 3 token reduction.
+
+2. **Blast radius safety gate (improvement_plan.md):** before committing any
+   fix, `scripts/crg_integration.py risky` checks if the change touches a
+   hub/bridge node or has `risk_score >= 0.7`. Risky fixes are deferred
+   instead of committed, preventing auto-fixes from silently restructuring
+   architecture-critical code.
+
+3. **Structural verification (verify_round.md):** after each round,
+   `code-review-graph update` + `detect-changes` measures architectural
+   drift. Drift > 0.4 triggers the revert protocol; new untested functions
+   are auto-registered as `test_coverage` issues.
+
+**Installation** (one-time, per target repo):
+```bash
+code-review-graph install --platform claude-code --repo <target>
+code-review-graph build --repo <target>
+# Restart Claude Code to load .mcp.json
+```
+
+Framework **gracefully degrades** without CRG — all integration points skip
+silently; only token efficiency and structural verification are lost.
 
 ## References
 

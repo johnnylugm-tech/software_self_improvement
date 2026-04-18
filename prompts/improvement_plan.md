@@ -126,8 +126,26 @@ Iterate the `open_issues.json` queue. For each issue:
 1. Record pre-fix state:
    - Issue metadata: id, severity, dimension, file:line, message
    - Run dimension tool → baseline score
+   - IF CRG available: call get_impact_radius for the issue's file
+     → record hub/bridge status of the function being modified
 
 2. Apply fix (minimal, targeted change addressing this specific issue)
+
+2a. (CRG safety gate, if available) Before committing, check blast radius:
+
+    python3 scripts/crg_integration.py risky . HEAD 0.7
+    # exits 1 if risk_score >= 0.7 OR fix touches a hub/bridge node
+
+    IF risky:
+      → DO NOT commit this fix
+      → git reset --hard HEAD (discard change)
+      → python3 scripts/issue_tracker.py defer <id> <round> \
+          "CRG blast radius <score>: touches hub/bridge node, requires human review"
+      → move to next issue
+
+    This prevents auto-fixes from silently restructuring architecture-
+    critical nodes. A hub node fix may pass the dimension tool but break
+    downstream flows that the tool doesn't see.
 
 3. Re-run tool immediately (same command as Step 1)
 

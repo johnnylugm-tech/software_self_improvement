@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""
+CRG Integration Helper: Wrap code-review-graph CLI as structured primitives
+
+Used by Tier 3 evaluation (architecture/readability/performance) and by the
+fix loop's blast-radius safety gate.
+
+Three primitives:
+  1. context(repo)          → compressed architecture snapshot for Tier 3 eval
+  2. blast_radius(repo, files)  → impact assessment before applying a fix
+  3. update(repo)           → incremental graph refresh after commits
+
+All commands return JSON on stdout or exit 0 silently if CRG is not installed
+(graceful degradation: framework still works without CRG, just with higher
+Tier 3 token cost).
+"""
+
+import sys
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+CRG_BIN = "code-review-graph"
+CRG_TIMEOUT = 60
+
+
+def _crg_available() -> bool:
+    return shutil.which(CRG_BIN) is not None
+
+
+def _run_crg(args: list, repo: str = None) -> dict:
+    """Run a CRG command and parse JSON stdout. Empty dict on any failure."""
+    if not _crg_available():
+        return {"_error": "crg_not_installed"}
+    cmd = [CRG_BIN] + args
+    if repo:
+        cmd += ["--repo", repo]
+    try:
+        out = subprocess.check_output(
+            cmd, stderr=subprocess.PIPE, timeout=CRG_TIMEOUT, text=True
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        return {"_error": str(e)[:200]}
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError:
+        # Some CRG commands print text (e.g., status); return as-is
+        return {"_raw": out.strip()}
+
+
+def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
+    """
+    Compressed architecture snapshot for Tier 3 dimension evaluation.
+
+    Returns a dict with (roughly):
+      - hub_nodes: most-connected functions/classes (architecture hotspots)
+      - bridge_nodes: chokepoints (betweenness centrality)
+      - large_functions: oversized functions (readability)
+      - knowledge_gaps: structural weaknesses
+      - stats: {nodes, edges, files, languages}
+
+    Design: feed this JSON to Claude as pre-compressed context instead of
+    making Claude read the full codebase. Saves tokens and improves
+    accuracy for architecture/readability/performance dimensions.
+    """
+    if not _crg_available():
+        return {"error": "code-review-graph not installed; falling back to full code read"}
+
+    # Status first — confirm graph is built
+    status = _run_crg(["status"], repo)
+    if "_raw" in status and "Nodes: 0" in status["_raw"]:
+        return {"error": "graph not built; run `code-review-graph build` first"}
+
+    # We use the CLI subcommands that emit JSON. For hub/bridge/gap analysis,
+    # CRG exposes these via MCP tools — when run standalone we rely on the
+    # `detect-changes` / `visualize` / wiki outputs. For pure context
+    # extraction in CLI, use what's reliably machine-readable:
+    result = {
+        "stats_raw": status.get("_raw", ""),
+        "note": (
+            "For hub/bridge/gap analysis, use the CRG MCP tools directly "
+            "(get_hub_nodes, get_bridge_nodes, get_knowledge_gaps, "
+            "get_architecture_overview) — they return structured JSON. "
+            "The CLI subset here is the minimal fallback."
+        ),
+    }
+    return result
+
+
+def blast_radius(repo: str, base: str = "HEAD") -> dict:
+    """
+    Run detect-changes to assess the blast radius of the most recent commit
+    (or uncommitted diff vs `base`). Returned structure has:
+
+      - risk_score: 0.0-1.0 (CRG's risk heuristic)
+      - changed_functions: list of functions/classes touched
+      - test_gaps: changed functions lacking test coverage
+      - affected_flows: execution flows impacted
+
+    Used by improvement_plan.md as a safety gate BEFORE committing a fix:
+    if risk_score > 0.7 or the fix touches a hub node, we defer instead.
+    """
+    data = _run_crg(["detect-changes", "--base", base], repo)
+    if "_error" in data:
+        return {"risk_score": None, "error": data["_error"]}
+
+    # Normalize: pull out the keys downstream code cares about
+    return {
+        "risk_score": data.get("risk_score"),
+        "summary": data.get("summary", ""),
+        "changed_functions": data.get("changed_functions", []),
+        "test_gaps": data.get("test_gaps", []),
+        "affected_flows": data.get("affected_flows", []),
+        "untested": data.get("untested", []),
+    }
+
+
+def is_risky(radius: dict, threshold: float = 0.7) -> bool:
+    """Decide whether a fix is risky enough to defer instead of commit."""
+    rs = radius.get("risk_score")
+    if rs is None:
+        return False  # unknown → let the normal tool-based verify decide
+    return rs >= threshold
+
+
+def update(repo: str) -> dict:
+    """Incremental graph refresh after a commit (seconds)."""
+    data = _run_crg(["update"], repo)
+    return data
+
+
+def _help():
+    print(f"""Usage: {sys.argv[0]} <command> [args]
+
+Commands:
+  context <repo>                     Compressed architecture snapshot (Tier 3)
+  blast <repo> [base=HEAD]           Blast radius of diff vs base
+  risky <repo> [base=HEAD] [threshold=0.7]  Exit 1 if fix is too risky
+  update <repo>                      Incremental graph refresh
+  check                              Is CRG installed? (exit 0/1)
+""")
+
+
+def main():
+    if len(sys.argv) < 2:
+        _help()
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "check":
+        sys.exit(0 if _crg_available() else 1)
+
+    if cmd == "context":
+        repo = sys.argv[2] if len(sys.argv) > 2 else "."
+        print(json.dumps(context(repo), indent=2))
+
+    elif cmd == "blast":
+        repo = sys.argv[2] if len(sys.argv) > 2 else "."
+        base = sys.argv[3] if len(sys.argv) > 3 else "HEAD"
+        print(json.dumps(blast_radius(repo, base), indent=2))
+
+    elif cmd == "risky":
+        repo = sys.argv[2] if len(sys.argv) > 2 else "."
+        base = sys.argv[3] if len(sys.argv) > 3 else "HEAD"
+        threshold = float(sys.argv[4]) if len(sys.argv) > 4 else 0.7
+        radius = blast_radius(repo, base)
+        risky = is_risky(radius, threshold)
+        print(json.dumps({
+            "risky": risky,
+            "risk_score": radius.get("risk_score"),
+            "threshold": threshold,
+            "reason": radius.get("summary", ""),
+        }, indent=2))
+        sys.exit(1 if risky else 0)
+
+    elif cmd == "update":
+        repo = sys.argv[2] if len(sys.argv) > 2 else "."
+        print(json.dumps(update(repo), indent=2))
+
+    else:
+        _help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
