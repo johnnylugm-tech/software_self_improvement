@@ -97,9 +97,40 @@ For each fix:
 - Loop to 3a
 
 ### Step 4: Final Report
-- Trajectory: per-dimension delta across all rounds
-- Evidence: citations to commits and tool outputs
-- Recommendation: pass/fail with explanation
+
+Must include every section below. Nothing silently dropped.
+
+```bash
+python3 scripts/issue_tracker.py report .sessi-work/issue_registry.json \
+  > .sessi-work/final_report_data.json
+```
+
+**Mandatory sections:**
+
+1. **Trajectory** — per-dimension score delta across all rounds.
+2. **Fixed Issues** — `report.fixed_count`, grouped by dimension with commit SHAs.
+3. **Accepted Risks** (`report.accepted_risks`) — deferred + wontfix issues,
+   rendered as a table with severity, dimension, message, and the 4-part reason:
+
+   ```markdown
+   ## Accepted Risks / Not Fixed
+
+   | ID | Severity | Dimension | Issue | Reason |
+   |----|----------|-----------|-------|--------|
+   | abc1234 | low | architecture | Circular dep in util | severity=low; occurrence=rare (only on cold start); impact=negligible (self-healing); cost=high (would require arch split) |
+   ```
+
+   This is the audit trail: every low-value issue that was **consciously not fixed**
+   shows here, so nothing disappears silently.
+
+4. **Still Open** (`report.open`) — any issue that is still open at end-of-run.
+   If this contains anything of severity ≥ medium, the recommendation is `partial`.
+5. **Recommendation** — one of:
+   - `pass` — `quality_complete = true` AND no open ≥ medium issues
+   - `pass-with-risks` — `quality_complete = true` AND only accepted_risks remain
+   - `partial` — `max_rounds` reached with open ≥ medium issues
+   - `fail` — regressions detected or score dropped below baseline
+6. **Evidence** — citations to commits (`git log --oneline`) and tool outputs.
 
 ## Default Configuration
 

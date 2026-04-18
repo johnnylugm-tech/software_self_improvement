@@ -144,6 +144,40 @@ def open_issues(registry: dict, severity_filter: list = None) -> list:
     return issues
 
 
+def accepted_risks(registry: dict) -> list:
+    """
+    Return deferred + wontfix issues, sorted by severity. Used by the final
+    report to surface 'found but intentionally not fixed' items with their
+    reasons — so nothing silently disappears.
+    """
+    issues = [
+        i for i in registry["issues"]
+        if i["status"] in ("deferred", "wontfix")
+    ]
+    issues.sort(
+        key=lambda i: (SEVERITY_ORDER.get(i["severity"], 99), i.get("round_resolved") or 0)
+    )
+    return issues
+
+
+def report(registry: dict) -> dict:
+    """
+    Compact report for the final summary:
+      - summary counts
+      - open issues (still to fix)
+      - accepted risks (deferred + wontfix with reasons)
+      - fixed count (for trajectory)
+    """
+    s = summary(registry)
+    fixed = [i for i in registry["issues"] if i["status"] == "fixed"]
+    return {
+        "summary": s,
+        "open": open_issues(registry),
+        "accepted_risks": accepted_risks(registry),
+        "fixed_count": len(fixed),
+    }
+
+
 def saturation_check(registry: dict, current_round: int, saturation_rounds: int = 3) -> bool:
     """
     Return True if no NEW issues were found in the last N rounds.
@@ -171,6 +205,8 @@ def main():
   {sys.argv[0]} defer <registry.json> <issue_id> <round> <reason>
   {sys.argv[0]} wontfix <registry.json> <issue_id> <round> <reason>
   {sys.argv[0]} open <registry.json> [severity_filter]
+  {sys.argv[0]} accepted <registry.json>
+  {sys.argv[0]} report <registry.json>
   {sys.argv[0]} saturation <registry.json> <current_round> [saturation_rounds]
 """)
         sys.exit(1)
@@ -212,6 +248,12 @@ def main():
     elif cmd == "open":
         sev_filter = sys.argv[3].split(",") if len(sys.argv) > 3 else None
         print(json.dumps(open_issues(registry, sev_filter), indent=2))
+
+    elif cmd == "accepted":
+        print(json.dumps(accepted_risks(registry), indent=2))
+
+    elif cmd == "report":
+        print(json.dumps(report(registry), indent=2))
 
     elif cmd == "saturation":
         rnd = int(sys.argv[3])

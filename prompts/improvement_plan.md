@@ -44,6 +44,51 @@ Priority order is fixed by severity — dimension scores only break ties within 
 issues, those issues still get fixed. This is the core correction over the previous
 score-driven design.
 
+### Step 2a: Cost-Benefit Triage (low-value minor issues)
+
+Before entering the fix loop, triage **low / info / minor-medium** issues against a
+cost-benefit rubric. Aggressively fixing every low-severity finding can introduce
+regressions, bloat the codebase, or force unjustified architectural churn. For such
+issues the correct action is to **mark `wontfix` with an explicit reason** — neither
+fix nor leave silently open.
+
+**Apply `wontfix` ONLY when ALL four conditions hold:**
+
+| Condition | Evaluate |
+|-----------|----------|
+| severity | `low` or `info` (medium requires a second reviewer-style check) |
+| occurrence probability | extremely low — requires rare precondition chain |
+| impact if triggered | negligible — no data loss, no security, no availability |
+| fix cost / risk | high: requires arch change, new dep, or wide blast radius |
+
+If ANY condition fails → do NOT wontfix; attempt the fix normally.
+
+**Score state does NOT change this decision.** A sub-gate overall score does not
+justify force-fixing a low-value issue with architectural risk — that would violate
+the tool's purpose (real quality, not numeric score). The same issue, same triage,
+regardless of `score_gate` status.
+
+**Register the decision (required):**
+
+```bash
+python3 scripts/issue_tracker.py wontfix \
+  .sessi-work/issue_registry.json <issue_id> <round> \
+  "<4-part structured reason>"
+```
+
+Reason format (all four parts required):
+```
+severity=low; occurrence=rare (needs X+Y+Z); impact=negligible (<effect>); cost=high (<fix-risk>)
+```
+
+Example:
+```
+"severity=low; occurrence=rare (only on malformed unicode in filename); impact=negligible (caught by outer try); cost=high (would require rewriting path handling across 6 modules)"
+```
+
+These issues will be surfaced in the final report under **Accepted Risks** with
+their reasons — nothing is silently dropped.
+
 ### Per-dimension fix strategy and caps
 
 | Dimension | Fix Strategy | Max fixes/round |
