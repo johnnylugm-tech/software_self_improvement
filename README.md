@@ -340,5 +340,5 @@ MIT License - See LICENSE file
 ## References
 
 - Framework: Based on Karpathy's autoresearch pattern (`github.com/karpathy/autoresearch`)
-- Quality model: Harness Engineering 9-dimension framework
+- Quality model: Extended from Harness Engineering framework (base model: 9 dimensions)
 - Implementation: Claude Code skill with Python orchestration + LLM evaluation

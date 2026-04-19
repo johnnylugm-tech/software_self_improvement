@@ -316,7 +316,7 @@ python3 scripts/config_loader.py config.yaml | jq '.dimensions | keys'
 ## References
 
 - Framework design: Based on Karpathy's autoresearch pattern (`github.com/karpathy/autoresearch`)
-- Quality model: Harness Engineering 9-dimension weighted framework
+- Quality model: Extended from Harness Engineering framework (base model: 9 dimensions)
 - Implementation: Claude Code skill with Python orchestration + LLM evaluation steps
 - Anti-bias: Research on LLM self-evaluation bias in ML systems
 
