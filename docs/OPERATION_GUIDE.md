@@ -54,7 +54,13 @@ Follow `prompts/crg_reconnaissance.md`. Runs 9 CRG MCP tool calls:
 | `refactor_tool(dead_code)` | Unreferenced functions/classes |
 
 Outputs: `.sessi-work/crg_reconnaissance.json` + pre-seeded issues in registry.
+After reconnaissance, `crg_analysis.py` computes structured metrics
+(`.sessi-work/crg_metrics.json`) consumed by `score.py` and the evaluation
+prompts — no LLM interpretation needed for the 6 deep-integration decisions.
 Token cost: ~3,900 (vs ~10,000+ for blind file reading).
+
+> **Deep integration reference:** `docs/CRG_DEEP_INTEGRATION.md` — complete
+> workflow diagram, all 6 integration points, threshold table, and data-flow map.
 
 ---
 

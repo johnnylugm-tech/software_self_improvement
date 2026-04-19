@@ -366,6 +366,9 @@ code-review-graph install --platform claude-code --repo <target>
 Framework **gracefully degrades** without CRG — all integration points skip
 silently; only token efficiency and structural verification are lost.
 
+> **Full reference:** `docs/CRG_DEEP_INTEGRATION.md` — complete workflow
+> diagram, 6 deep-integration points, threshold table, data-flow map.
+
 ### Deep Integration Layer (`scripts/crg_analysis.py`)
 
 "Used" ≠ "deeply integrated." A CRG tool is **deeply integrated** when its

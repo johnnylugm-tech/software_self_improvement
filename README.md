@@ -245,7 +245,8 @@ code-review-graph install --platform claude-code --repo .
 - ✓ **Without CRG:** Works fine (higher Tier 3 token cost, no safety gates)
 - ✓ **Graceful degradation:** All features optional
 
-See `docs/OPERATION_GUIDE.md` for complete CRG workflow.
+See `docs/CRG_DEEP_INTEGRATION.md` for the complete workflow diagram, all 6 deep-integration points, threshold table, and data-flow reference.
+See `docs/OPERATION_GUIDE.md` for step-by-step operational guide.
 
 ## Installation
 
