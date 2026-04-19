@@ -91,7 +91,7 @@ Complete implementation of auto-research-style quality improvement framework wit
   - Architecture, performance, limitations
 
 - [x] **docs/ANTI_BIAS.md** — Bias defense analysis
-  - 6-layer defense explained with examples
+  - 7-layer defense explained with examples
   - Tool-first hierarchy
   - Evidence requirement
   - Per-fix re-verification
@@ -119,33 +119,34 @@ Complete implementation of auto-research-style quality improvement framework wit
 
 ## Quality Dimensions
 
-### 9 Core Dimensions (Standard Config)
-1. **Linting** (8%) — Code style consistency
-2. **Type Safety** (12%) — Type correctness
-3. **Test Coverage** (15%) — Line/branch coverage
-4. **Security** (12%) — Vulnerability detection
-5. **Performance** (10%) — Speed/efficiency
-6. **Architecture** (10%) — Code organization
-7. **Readability** (9%) — Maintainability
-8. **Error Handling** (11%) — Exception/error recovery
-9. **Documentation** (13%) — Code comment coverage
+### 12 Core Dimensions (Standard Config — config.example.yaml)
+1. **Linting** (6%) — Code style consistency
+2. **Type Safety** (10%) — Type correctness
+3. **Test Coverage** (13%) — Line/branch coverage
+4. **Security** (10%) — Vulnerability detection
+5. **Performance** (7%) — Speed/efficiency
+6. **Architecture** (7%) — Code organization
+7. **Readability** (6%) — Maintainability
+8. **Error Handling** (9%) — Exception/error recovery
+9. **Documentation** (10%) — Code comment coverage
+10. **Secrets Scanning** (8%) — Secret/credential leaks (zero tolerance)
+11. **Mutation Testing** (8%) — Test suite quality validation
+12. **License Compliance** (6%) — License conflict detection
 
-**Standard ceiling: 60-70%** (what standard tools can measure)
+**Standard ceiling: 70-75%** (what these tools can measure)
 
-### 7 Extended Dimensions (Advanced Config)
-1. **Mutation Testing** (10%) — Test suite quality (HIGH priority)
-2. **Property Testing** (7%) — Edge case generation (MEDIUM)
-3. **Fuzzing** (8%) — Crash discovery (MEDIUM)
-4. **License Compliance** (5%) — License conflicts (LOW)
-5. **Accessibility** (6%) — WCAG violations (MEDIUM)
-6. **Observability** (5%) — Logging/metrics gaps (LOW)
-7. **Supply Chain Security** (6%) — Signature verification (LOW)
+### 5 Extended Dimensions (Advanced Config — config.advanced.yaml, disabled by default)
+1. **Property Testing** (7%) — Edge case generation (MEDIUM)
+2. **Fuzzing** (8%) — Crash discovery (MEDIUM)
+3. **Accessibility** (6%) — WCAG violations (MEDIUM)
+4. **Observability** (5%) — Logging/metrics gaps (LOW)
+5. **Supply Chain Security** (6%) — Signature verification (LOW)
 
 **Extended ceiling: 80%+** (with all 17 dimensions)
 
 **Absolute limitation:** Business logic, real UX, zero-days, team preferences (require humans)
 
-## Anti-Bias Defenses (6 Layers)
+## Anti-Bias Defenses (7 Layers)
 
 1. **Tool-First Hierarchy** — `final_score = min(tool_score, llm_score)`
 2. **Evidence Requirement** — All findings need tool output or git diff
@@ -153,6 +154,7 @@ Complete implementation of auto-research-style quality improvement framework wit
 4. **Deterministic Verification** — Quantitative pre/post comparison (verify.py)
 5. **Regression Detection** — Surface changes that hurt other dimensions
 6. **Path Heuristics** — Never weaken tests, broaden exceptions, add ignore comments
+7. **Structural Drift Detection (CRG)** — Architectural regression detection via knowledge graph
 
 **Result:** Prevents LLM self-evaluation bias while maintaining practical improvements.
 
@@ -163,11 +165,11 @@ harness-quality-framework/
 ├── SKILL.md                              # Entry point & execution contract
 ├── README.md                             # Complete overview
 ├── config.example.yaml                   # Standard config (9 dims)
-├── config.advanced.yaml                  # Extended config (16 dims)
+├── config.advanced.yaml                  # Extended config (17 dims: 12 core + 5 extended)
 ├── EXTENDED_DIMS_STATUS.md              # Tool availability status
 ├── IMPLEMENTATION_STATUS.md             # This file
 ├── docs/
-│   ├── ANTI_BIAS.md                     # 6-layer bias defense analysis
+│   ├── ANTI_BIAS.md                     # 7-layer bias defense analysis
 │   ├── EXTENDED_DIMENSIONS.md           # 7-dimension detailed guide
 │   └── INSTALL_EXTENDED_DIMS.md         # Tool installation guide
 └── scripts/
@@ -210,29 +212,24 @@ harness-quality-framework/
 
 ### 1. Quick Start (Standard Config)
 ```bash
-cd /Users/johnny/Projects/harness-quality-framework
 cp config.example.yaml config.yaml
-claude-code run quality-improvement --config config.yaml
 ```
-**Time:** 15-50 min (3 rounds × 5-15 min/round)
+In Claude Code conversation: `"Run quality improvement on /path/to/repo"`
+**Time:** 30-60 min (3 rounds × 10-20 min/round)
 
-### 2. Extended Framework (All 16 Dimensions)
+### 2. Extended Framework (All 17 Dimensions)
 ```bash
-# Install tools (optional)
-./scripts/install_extended_tools.sh --all  # All 13 extended tools
-# Or by priority:
-./scripts/install_extended_tools.sh --high    # Mutation testing (fastest ROI)
-./scripts/install_extended_tools.sh --medium  # Property, fuzzing, accessibility
-./scripts/install_extended_tools.sh --low     # Compliance, observability, supply chain
+# Install extended tools (optional)
+./scripts/install_extended_tools.sh --high    # Property testing, fuzzing (fastest ROI)
+./scripts/install_extended_tools.sh --medium  # Accessibility
+./scripts/install_extended_tools.sh --low     # Observability, supply chain
 
 # Configure
 cp config.advanced.yaml config.yaml
 # Edit config.yaml: set 'enabled: true' for each dimension you want
-
-# Run
-claude-code run quality-improvement --config config.yaml
 ```
-**Time:** 30-90 min (3 rounds × 10-30 min/round depending on dimensions enabled)
+In Claude Code conversation: `"Run quality improvement using config.advanced.yaml"`
+**Time:** 90-150 min (3 rounds × 30-50 min/round depending on dimensions enabled)
 
 ### 3. Custom Configuration
 Edit `config.yaml`:
@@ -247,8 +244,8 @@ Edit `config.yaml`:
 
 | Configuration | Time/Round | Total (3 rounds) |
 |---------------|-----------|------------------|
-| Standard (9 dims) | 5-15 min | 15-50 min |
-| Extended (16 dims, all enabled) | 20-40 min | 60-120 min |
+| Standard (12 core dims) | 10-20 min | 30-60 min |
+| Extended (17 dims, all enabled) | 30-50 min | 90-150 min |
 | Extended (HIGH priority only) | 10-20 min | 30-60 min |
 
 **Factors:**
@@ -325,7 +322,7 @@ python3 scripts/config_loader.py config.yaml | jq '.dimensions | keys'
 The Harness Quality Framework provides a production-ready, deterministic quality improvement system that:
 - ✅ Automates 70-75% of quality improvements with 12 core dimensions
 - ✅ Reaches 80%+ with 5 extended optional dimensions
-- ✅ Defends against LLM self-evaluation bias with 6-layer verification
+- ✅ Defends against LLM self-evaluation bias with 7-layer verification
 - ✅ Provides configurable targets, weights, and enabled/disabled dimensions
 - ✅ Generates evidence-based reports with full traceability
 - ✅ Integrates with standard DevOps tooling (git, pytest, eslint, etc.)

@@ -18,7 +18,7 @@ But the claimed improvement might be:
 - Ornamental (no functional change)
 - Deceptive (claimed fixes for one dimension hurt another)
 
-## Solution: 6-Layer Defense
+## Solution: 7-Layer Defense
 
 ### 1. Tool-First Hierarchy
 
@@ -165,6 +165,27 @@ DO NOT:
 - Add @ts-ignore, # noqa, or # type: ignore
 - Make error messages less descriptive
 ```
+
+### 7. Structural Drift Detection (CRG)
+
+Catches architectural regressions that dimension tools cannot see. After each
+round, `code-review-graph update` + `detect-changes` measures changes to the
+knowledge graph: new hub nodes, risk-score jumps, expanded test gaps.
+
+**Thresholds:**
+- `risk_score` jump > 0.2 → warning logged in `verified.json`
+- `risk_score` jump > 0.4 → treated as regression, revert protocol triggered
+- New untested functions → auto-registered as `test_coverage` issues
+
+**Pre-commit gate (improvement_plan.md Step 2.2a):**
+```bash
+python3 scripts/crg_integration.py risky . HEAD 0.7
+# Exit 1 if risk_score ≥ 0.7 OR fix touches hub/bridge node
+# → defer instead of commit (prevents silent architectural restructuring)
+```
+
+**Graceful degradation:** If CRG is not installed this defense is skipped
+silently. Defenses 1–6 remain fully active.
 
 ## Evidence Threshold Analysis
 

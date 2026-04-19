@@ -16,25 +16,41 @@ All 9 tools required for extended dimensions are installed and ready to use.
 
 ## Tool Installation Status
 
-### ✓ READY (9 Standard Dimensions)
-- All 24 tools for standard dimensions are installed and operational
-- pyright, eslint, pytest, coverage, clippy, checkstyle, etc. ✓
+### ✓ READY (12 Core Dimensions)
+- All tools for 12 core dimensions are installed and operational
+- pyright, eslint, pytest, coverage, clippy, checkstyle, mutmut, scancode, gitleaks, etc. ✓
+- mutation_testing and license_compliance are NOW CORE (not extended)
 
-### ✓ READY (7 Extended Dimensions)
-- All 13 extended tools installed
+### ✓ READY (5 Extended Dimensions)
+- All 9 extended tools installed
 - Enable each dimension by setting `enabled: true` in `config.advanced.yaml`
 
 ## Detailed Status by Dimension
 
+### Core Dimensions (in config.example.yaml)
+| Dimension | Tier | Status | Notes |
+|-----------|------|--------|-------|
+| linting | 1 | ✓ core | eslint, pylint |
+| type_safety | 1 | ✓ core | pyright |
+| test_coverage | 1 | ✓ core | coverage, nyc |
+| security | 2 | ✓ core | bandit, npm-audit |
+| secrets_scanning | 1 | ✓ core | detect-secrets, gitleaks |
+| mutation_testing | 1 | ✓ core | mutmut, @stryker-mutator/core |
+| license_compliance | 1 | ✓ core | scancode-toolkit, fossa |
+| architecture | 3 | ✓ core | radon, sonarqube |
+| readability | 3 | ✓ core | radon |
+| error_handling | 3 | ✓ core | custom checks |
+| documentation | 3 | ✓ core | pydocstyle, interrogate |
+| performance | 3 | ✓ core | radon, pytest-benchmark |
+
+### Extended Dimensions (in config.advanced.yaml, disabled by default)
 | Dimension | Tools | Status | Priority | Notes |
 |-----------|-------|--------|----------|-------|
-| **mutation_testing** | mutmut, @stryker-mutator/core | ✓ 2/2 | **HIGH** | Foundation for test quality |
 | **property_testing** | hypothesis, fast-check | ✓ 2/2 | MEDIUM | Generates edge cases |
 | **fuzzing** | atheris 2.3.0, jazzer | ✓ 1/2 | MEDIUM | atheris ✓, jazzer needs Java 11+ |
-| **license_compliance** | scancode-toolkit, fossa | ✓ 2/2 | LOW | Governance/risk |
 | **accessibility** | pa11y, axe-core | ✓ 2/2 | MEDIUM | WCAG compliance |
 | **observability** | syft, grype | ✓ 2/2 | LOW | SBOM + vuln scanning |
-| **supply_chain** | cosign | ✓ 1/1 | LOW | Signature verification |
+| **supply_chain_security** | cosign | ✓ 1/1 | LOW | Signature verification |
 
 ## Installation by Priority
 

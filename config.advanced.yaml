@@ -226,11 +226,12 @@ llm_routing:
     dimensions: [security]
   tier3:
     provider: claude_native
-    model: claude
+    model: claude-sonnet-4-5      # override: HARNESS_CLAUDE_MODEL
     dimensions: [architecture, readability, error_handling,
                  documentation, performance]
   improve:
     provider: claude_native
+    model: claude-sonnet-4-5      # override: HARNESS_IMPROVE_MODEL
   token_budget:
     tier1_input_max: 8000
     tier2_input_max: 10000

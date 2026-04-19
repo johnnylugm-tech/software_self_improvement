@@ -515,9 +515,11 @@ property_testing:
 ### Running with Extended Dims
 
 ```bash
-# Use advanced config
-claude-code run quality-improvement --config config.advanced.yaml
+# Prepare config
+cp config.advanced.yaml config.yaml
+# Edit: set 'enabled: true' for desired dims
 ```
+Then in Claude Code: `"Run quality improvement using config.advanced.yaml"`
 
 ## Best Practices
 

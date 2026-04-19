@@ -201,29 +201,49 @@ See `docs/EXTENDED_DIMENSIONS.md` for prerequisites and integration.
 
 ## Invocation
 
+**This framework runs exclusively via the Claude Code conversation window.**
+There is no standalone CLI command to launch it. Claude reads this SKILL.md as
+its instruction set and executes each step interactively.
+
+### Starting a Quality Improvement Run
+
+Open Claude Code and say (example prompts):
+```
+"Please run the quality improvement skill on /path/to/repo"
+"Evaluate code quality for https://github.com/user/repo using config.yaml"
+"Run all 12 quality dimensions on the current project"
+```
+
+Claude will then execute Steps 1–4 from this document, calling CLI scripts
+where needed. The Python scripts are called by Claude as shell commands —
+they are not invoked directly by users.
+
+### CLI Scripts (called by Claude, not by users directly)
+
 ```bash
-# Resolve config and target
+# Step 1 — Claude calls these to resolve config + target
 python3 scripts/config_loader.py config.yaml
 python3 scripts/setup_target.py <github-url-or-local-path>
 
-# Evaluate single dimension
-claude-internal prompts/evaluate_dimension.md --config config.json --dimension linting
+# Step 3b — Claude calls this to compute weighted score
+python3 scripts/score.py .sessi-work/round_<n> config.json
 
-# Score round
-python3 scripts/score.py round_1
+# Step 3c — Claude calls this for anti-bias verification
+python3 scripts/verify.py .sessi-work/round_<n>/result.json .sessi-work/round_<n> <repo_path>
 
-# Verify round
-python3 scripts/verify.py round_1 config.json
+# Step 3d — Claude calls this to snapshot the round
+python3 scripts/checkpoint.py round <n> scores.json <overall_score>
 
-# Checkpoint
-python3 scripts/checkpoint.py round_1
-
-# Improvement plan
-claude-internal prompts/improvement_plan.md --failing-dims verified.json
-
-# Verify improvements
-claude-internal prompts/verify_round.md --results result.json --verified verified.json
+# Step 4 — Claude calls this to generate the final report
+python3 scripts/report_gen.py <repo_path> .sessi-work .sessi-work/issue_registry.json <score_gate> .sessi-work/final_report.md
 ```
+
+### Prompts (read and followed by Claude, not executed as commands)
+
+- `prompts/evaluate_dimension.md` — Claude follows this protocol for each dimension
+- `prompts/improvement_plan.md` — Claude follows this to plan and apply fixes
+- `prompts/verify_round.md` — Claude follows this for cross-dimension regression checks
+- `prompts/final_report.md` — Claude follows this to produce the final report
 
 ## Anti-Bias Defenses
 

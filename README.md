@@ -25,30 +25,47 @@ Auto-research-style quality improvement for code repositories. Evaluates code ac
 - Early-stop when target reached
 - Per-round snapshots with git tagging
 
-## Quick Start
+## How to Run
 
-### Standard Configuration (12 dimensions)
+> **This is a Claude Code skill — it runs entirely in the conversation window.**
+> There is no standalone CLI command. Claude reads `SKILL.md` as its instruction
+> set and calls the Python scripts interactively.
+
+### Step 1: Prepare config
+
 ```bash
-# Use default config with all core dimensions
 cp config.example.yaml config.yaml
-
-# Run the skill
-claude-code run quality-improvement --config config.yaml
+# Edit config.yaml if needed (score_gate, rounds, model, etc.)
 ```
 
-### Advanced Configuration (17 dimensions)
+### Step 2: Open Claude Code and say
+
+```
+"Please run the quality improvement skill on /path/to/repo"
+# or
+"Evaluate https://github.com/user/repo using config.yaml"
+# or  
+"Run all 12 quality dimensions, 3 rounds, score gate 85"
+```
+
+Claude will execute the 4-step process from `SKILL.md` — no further commands needed.
+
+### Advanced: 17 dimensions (core + extended)
+
 ```bash
-# Copy advanced config
+# First time only: install extended tools
+./scripts/install_extended_tools.sh --high   # mutation testing (recommended)
+./scripts/install_extended_tools.sh --medium # property testing + fuzzing
+./scripts/install_extended_tools.sh --all    # everything
+
+# Use advanced config
 cp config.advanced.yaml config.yaml
+# Edit: set 'enabled: true' for desired extended dims
+```
 
-# Install extended dimension tools (optional)
-./scripts/install_extended_tools.sh --high  # or --medium, --low, --all
-
-# Enable extended dimensions in config
-# Edit config.yaml: set 'enabled: true' for desired extended dims
-
-# Run with all dimensions
-claude-code run quality-improvement --config config.yaml
+Then in Claude Code conversation:
+```
+"Run quality improvement using config.advanced.yaml on /path/to/repo"
 ```
 
 ## Configuration
@@ -266,14 +283,16 @@ code-review-graph status --repo .
 python3 scripts/verify_tools.py --crg
 ```
 
-### Step 4️⃣: Ready to Run
+### Step 4️⃣: Start in Claude Code
 
 ```bash
 # Copy config (first time only)
 cp config.example.yaml config.yaml
+```
 
-# Run framework
-claude-code run quality-improvement
+Then open Claude Code and say:
+```
+"Please run the quality improvement skill on [this repo / path / URL]"
 ```
 
 ## Quick Start Scenarios
@@ -281,32 +300,29 @@ claude-code run quality-improvement
 ### Scenario 1: First Time Setup (Recommended)
 
 ```bash
-# Step 1: Check installed tools
+# Check installed tools
 python3 scripts/verify_tools.py
 
-# Step 2: Install missing extended tools (optional)
+# Install extended tools if needed (optional)
 ./scripts/install_extended_tools.sh --high
 
-# Step 3: Setup CRG (optional, recommended)
+# Setup CRG (optional, recommended for token savings)
 code-review-graph install --platform claude-code --repo .
 code-review-graph build --repo .
 # Restart Claude Desktop
 
-# Step 4: Run
+# Prepare config
 cp config.example.yaml config.yaml
-claude-code run quality-improvement
 ```
+Then in Claude Code: `"Run quality improvement on /path/to/repo"`
 
 ### Scenario 2: Already Have Tools
 
 ```bash
-# No reinstall needed - just run
-cp config.example.yaml config.yaml
-claude-code run quality-improvement
-
-# Optional: update CRG (won't re-install MCP)
+# Optional: update CRG graph
 code-review-graph update --repo .
 ```
+Then in Claude Code: `"Run quality improvement on /path/to/repo"`
 
 ### Scenario 3: Full Setup (Extended Tools + CRG)
 
@@ -319,49 +335,47 @@ code-review-graph build --repo .
 
 # Configure with all dimensions
 cp config.advanced.yaml config.yaml
-# Edit to enable desired extended dims
-
-# Run
-claude-code run quality-improvement
+# Edit: set 'enabled: true' for desired extended dims
 ```
+Then in Claude Code: `"Run quality improvement using config.advanced.yaml"`
 
 ### Scenario 4: Subsequent Runs
 
-```bash
-# Just run - tools already installed
-claude-code run quality-improvement
-
-# Optional: keep CRG graph fresh
-code-review-graph update --repo .
+Nothing to install — just open Claude Code and say:
 ```
+"Run another quality improvement round on [repo]"
+```
+Optional: keep CRG graph fresh first: `code-review-graph update --repo .`
 
 ## Usage
 
-### Basic Usage
-```bash
-# Evaluate current directory with default config
-claude-code run quality-improvement
+### Conversation Prompts
 
-# Evaluate GitHub repo
-claude-code run quality-improvement --target https://github.com/user/repo
+```
+# Standard run (current directory)
+"Run the quality improvement skill, config is config.yaml"
 
-# Custom config
-claude-code run quality-improvement --config my-config.yaml --target /path/to/repo
+# Evaluate a GitHub repo
+"Evaluate https://github.com/user/repo — 3 rounds, score gate 85"
+
+# Custom target + config
+"Run quality improvement on /path/to/repo using my-config.yaml"
+
+# Single round (quick assessment)
+"Run 1 round of quality evaluation on this project"
+
+# All dimensions (extended included)
+"Run quality improvement with all 17 dimensions using config.advanced.yaml"
 ```
 
-### Advanced Options
-```bash
-# Run only 1 round (fast assessment)
-claude-code run quality-improvement --max-rounds 1
+### Conversation Options (tell Claude what you want)
 
-# Disable early-stop (always run all rounds)
-claude-code run quality-improvement --no-early-stop
-
-# Use advanced config with extended dimensions
-claude-code run quality-improvement --config config.advanced.yaml
-
-# Dry-run: evaluate without making changes
-claude-code run quality-improvement --dry-run
+```
+"Use claude-opus-4 for the improvement phase"
+"Only evaluate architecture and security this round"
+"Skip mutation testing, focus on linting and type_safety"
+"Run with score gate 90 instead of 85"
+"Dry-run only: evaluate but don't apply any fixes"
 ```
 
 ## Output Structure
@@ -398,58 +412,50 @@ Each dimension score includes:
 ```bash
 cp config.example.yaml config.yaml
 # Edit config.yaml: set max_rounds: 1
-claude-code run quality-improvement
 ```
+In Claude Code: `"Run 1 round of quality assessment on /path/to/repo"`
 
 ### Example 2: Full Framework (17 dimensions)
 ```bash
 cp config.advanced.yaml config.yaml
 ./scripts/install_extended_tools.sh --all
-
 # Edit config.yaml: enable desired extended dims
-# Then run
-claude-code run quality-improvement
 ```
+In Claude Code: `"Run quality improvement using config.advanced.yaml"`
 
 ### Example 3: Custom Targets
 ```bash
 cp config.example.yaml config.yaml
-
-# Edit config.yaml with custom targets:
+# Edit config.yaml:
 # quality:
-#   target: 90              # Stricter overall
+#   score_gate: 90
 # dimensions:
 #   test_coverage:
-#     target: 95           # Higher coverage requirement
+#     target: 95
 #   security:
-#     target: 95           # Stricter security
-
-claude-code run quality-improvement
+#     target: 95
 ```
+In Claude Code: `"Run quality improvement — score gate is 90"`
 
 ## Architecture
 
-- **SKILL.md** — Entry point & execution contract
-- **scripts/config_loader.py** — YAML → JSON resolver
-- **scripts/setup_target.py** — Clone/setup working dir
-- **scripts/score.py** — Weighted score computation
-- **scripts/verify.py** — Anti-bias verification
-- **scripts/checkpoint.py** — Round snapshots
-- **prompts/evaluate_dimension.md** — Per-dimension protocol
-- **prompts/improvement_plan.md** — Ranking & fixing
-- **prompts/verify_round.md** — Cross-check & revert
-
-See `docs/ARCHITECTURE.md` for full system design.
+- **SKILL.md** — Execution contract (Claude reads this as its instruction set)
+- **scripts/config_loader.py** — YAML → JSON resolver (called by Claude)
+- **scripts/setup_target.py** — Clone/setup working dir (called by Claude)
+- **scripts/score.py** — Weighted score computation (called by Claude)
+- **scripts/verify.py** — Anti-bias verification (called by Claude)
+- **scripts/checkpoint.py** — Round snapshots (called by Claude)
+- **prompts/evaluate_dimension.md** — Per-dimension protocol (followed by Claude)
+- **prompts/improvement_plan.md** — Fix planning (followed by Claude)
+- **prompts/verify_round.md** — Cross-check & revert (followed by Claude)
 
 ## Documentation
 
 - **README.md** (this file) — Overview & quick start
+- **docs/OPERATION_GUIDE.md** — Complete workflow with CLI + CRG MCP tools
 - **docs/INSTALL_EXTENDED_DIMS.md** — Tool installation guide
-- **docs/EXTENDED_DIMENSIONS.md** — Detailed guide for 7 new dims
-- **docs/ANTI_BIAS.md** — Self-evaluation bias defenses
-- **docs/ARCHITECTURE.md** — System design & components
-- **docs/DIMENSIONS.md** — Detailed per-dimension guide
-- **docs/USAGE.md** — Advanced usage patterns
+- **docs/EXTENDED_DIMENSIONS.md** — Detailed guide for 5 extended dims
+- **docs/ANTI_BIAS.md** — 7-layer bias defense analysis
 - **EXTENDED_DIMS_STATUS.md** — Tool availability & prerequisites
 
 ## Performance
