@@ -44,11 +44,17 @@ Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-ea
 - Output: verified.json (use for downstream decisions, not raw scores)
 
 **3d. Checkpoint Round**
-- Snapshot: round_<n>.json with all scores, findings, deltas
+- Snapshot: round_<n>.json with all scores, findings, deltas (via `checkpoint.py`)
 - Mark improvements per dimension
 - Persist `issue_registry.json` snapshot into round folder for audit
-- Commit round results with git tag: `round-<n>`
+- Claude executes: `git tag round-<n>` on the target repo (not automatic)
+- Changes remain local only — no automatic `git push` to remote
 - Output: markdown summary for dashboard
+
+> **Commit timing:**
+> - Per-fix: one `git commit` per issue fixed (in Step 3f, called by Claude)
+> - Per-round: one `git tag round-<n>` (in Step 3d, called by Claude)
+> - Never automatic push — user decides when to push to remote
 
 **3e. Early-Stop Check (Issue-Driven)**
 
