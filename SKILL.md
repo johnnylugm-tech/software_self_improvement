@@ -26,6 +26,24 @@ python3 scripts/setup_target.py <github-url-or-local-path> [work_dir]
 #                        or "[CRG] Not available — not installed. Framework will run without CRG."
 ```
 
+### Step 2.5: CRG Structural Reconnaissance (if CRG available)
+
+Runs **once per session**, before the first evaluation round.
+Follows `prompts/crg_reconnaissance.md`.
+
+9 CRG queries → structural intelligence baseline:
+- **High-risk components** — hub + bridge nodes with high centrality
+- **Untested hotspots** — hub nodes in knowledge gaps → pre-seeded as `high` issues
+- **Module cohesion** — low-cohesion communities → pre-seeded as `medium` issues
+- **Unexpected couplings** — surprising cross-module edges → pre-seeded as `medium` issues
+- **Dead code** — unreferenced functions/classes → pre-seeded as `low` issues
+
+Output: `.sessi-work/crg_reconnaissance.json` + pre-seeded issues in registry.
+This file is read by evaluate_dimension.md Step 2a to focus per-dimension analysis.
+
+> Token cost: ~3,900 tokens total (vs ~10,000+ for blind file reading).
+> Skip silently if `crg_status.json` shows `available: false`.
+
 ### Step 3: Iterate Rounds (3 default, configurable)
 Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-early-stop → 3f-improve**
 
@@ -276,23 +294,59 @@ See `docs/ANTI_BIAS.md` for detailed analysis.
 ## Code Review Graph Integration
 
 When [Code Review Graph](https://github.com/code-review-graph) (CRG) is installed,
-three integration points activate automatically:
+**four integration points** activate automatically (20 of 27 MCP tools utilized):
 
-1. **Tier 3 evaluation (evaluate_dimension.md):** architecture / readability /
-   performance / documentation / error_handling dimensions query the CRG
-   knowledge graph (hub nodes, bridge nodes, large functions, knowledge gaps)
-   before reading any source code. Target: 30-50% Tier 3 token reduction.
+1. **Structural reconnaissance (crg_reconnaissance.md — Step 2.5):** runs once
+   per session before the first evaluation round. Uses `get_minimal_context`,
+   `list_graph_stats`, `get_suggested_questions`, `get_hub_nodes`, `get_bridge_nodes`,
+   `list_communities`, `get_community`, `get_knowledge_gaps`,
+   `get_surprising_connections`, `refactor_tool(dead_code)` to identify high-risk
+   components, untested hotspots, unexpected couplings, and dead code.
+   Pre-seeds the issue registry (~3,900 tokens vs ~10,000+ for blind file reading).
 
-2. **Blast radius safety gate (improvement_plan.md):** before committing any
-   fix, `scripts/crg_integration.py risky` checks if the change touches a
-   hub/bridge node or has `risk_score >= 0.7`. Risky fixes are deferred
-   instead of committed, preventing auto-fixes from silently restructuring
-   architecture-critical code.
+2. **Tier 3 evaluation (evaluate_dimension.md):** architecture / readability /
+   performance / documentation / error_handling dimensions start with
+   `get_minimal_context` then query dimension-specific tools (hub nodes,
+   bridge nodes, large functions, knowledge gaps, community cohesion, flow analysis)
+   before reading any source code. Target: −30 to −50% Tier 3 token reduction.
 
-3. **Structural verification (verify_round.md):** after each round,
-   `code-review-graph update` + `detect-changes` measures architectural
+3. **Pre-fix context + safety gate (improvement_plan.md):** before each fix,
+   `get_minimal_context` + `get_review_context` replace manual file reads
+   (impact + source + review guidance in one call); `get_impact_radius` records
+   hub/bridge status; `crg_integration.py risky` gates commits — risk_score ≥ 0.7
+   or hub/bridge touch → defer instead of commit.
+
+4. **Structural verification (verify_round.md):** after each round,
+   `code-review-graph update` + `detect_changes_tool` measures architectural
    drift. Drift > 0.4 triggers the revert protocol; new untested functions
    are auto-registered as `test_coverage` issues.
+
+**MCP tools used across all integration points:**
+
+| Tool | Integration point |
+|------|------------------|
+| `get_minimal_context` | Step 2.5 + every Tier 3 eval + every fix |
+| `list_graph_stats` | Step 2.5 reconnaissance |
+| `get_suggested_questions` | Step 2.5 reconnaissance |
+| `get_hub_nodes` | Step 2.5 + architecture/readability/performance/docs |
+| `get_bridge_nodes` | Step 2.5 + architecture |
+| `list_communities` | Step 2.5 + architecture |
+| `get_community` | Step 2.5 + architecture |
+| `get_knowledge_gaps` | Step 2.5 + architecture |
+| `get_surprising_connections` | Step 2.5 + architecture |
+| `refactor_tool` (dead_code) | Step 2.5 reconnaissance |
+| `find_large_functions` | readability eval |
+| `list_flows` | performance + error_handling eval |
+| `get_flow` | performance + error_handling (drill-down) |
+| `get_affected_flows` | error_handling eval |
+| `semantic_search_nodes` | error_handling eval |
+| `generate_wiki` / `get_wiki_page` | documentation eval |
+| `get_docs_section` | documentation eval (targeted) |
+| `query_graph_tool` | Tier 3 (tests_for, callers_of, fan-in/out) |
+| `traverse_graph_tool` | Tier 3 (fan-in/fan-out depth analysis) |
+| `get_review_context` | improvement_plan.md per-fix context |
+| `get_impact_radius` | improvement_plan.md safety gate |
+| `detect_changes` | verify_round.md structural drift |
 
 **Installation** (one-time, per target repo):
 ```bash

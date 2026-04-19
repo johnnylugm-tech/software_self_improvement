@@ -150,19 +150,30 @@ cat .sessi-work/crg_status.json
 # OR {"available": false, "reason": "code-review-graph not installed — ..."}
 ```
 
-If `available: true` → proceed to CRG MCP tools below.
 If `available: false` → skip CRG; fall back to full code reading (higher token cost).
 
-Per dimension, use the corresponding **CRG MCP tools** (available once
+**If `available: true` → first call is always `get_minimal_context` (~100 tokens):**
+
+```
+[USE mcp__code-review-graph__get_minimal_context_tool]
+task: "evaluate <dimension> dimension"
+```
+
+Read `risk_score` and `suggested_next_tools` — use them to focus the dimension
+analysis rather than scanning the full codebase. Also check
+`.sessi-work/crg_reconnaissance.json` (written in Step 2.5) for pre-identified
+hotspots in this dimension's files.
+
+Then, per dimension, use the corresponding **CRG MCP tools** (available once
 `.mcp.json` is loaded — the `code-review-graph` server exposes 27 tools):
 
 | Dimension | CRG MCP tools to call | What to ask |
 |-----------|----------------------|-------------|
-| `architecture` | `get_hub_nodes` (top 10), `get_bridge_nodes`, `get_knowledge_gaps`, `get_surprising_connections`, `get_architecture_overview` | Layering violations, chokepoints, cyclic dependencies, hub nodes doing too much |
+| `architecture` | `get_hub_nodes` (top 10), `get_bridge_nodes`, `get_knowledge_gaps`, `get_surprising_connections`, `get_architecture_overview`, `list_communities`, `get_community` (low-cohesion ones) | Layering violations, chokepoints, cyclic deps, hub nodes doing too much, low-cohesion modules |
 | `readability` | `find_large_functions`, `get_hub_nodes` | Functions > 100 LOC; hub nodes that have become god-objects |
-| `performance` | `get_hub_nodes`, `list_flows` | Hot paths passing through bottleneck functions |
-| `error_handling` | `get_affected_flows`, `semantic_search_nodes "except\\|catch\\|error"` | Flows without error handlers; try/except placement |
-| `documentation` | `generate_wiki` (first run) or `get_wiki_page`, `get_hub_nodes` | Undocumented hub nodes = highest-priority doc gaps |
+| `performance` | `get_hub_nodes`, `list_flows`, `get_flow` (for top flows) | Hot paths through bottleneck functions; call depth of critical flows |
+| `error_handling` | `get_affected_flows`, `semantic_search_nodes "except\|catch\|error"`, `list_flows`, `get_flow` (drill into specific flows) | Flows without error handlers; trace exact call step missing try/except |
+| `documentation` | `generate_wiki` (first run) or `get_wiki_page`, `get_hub_nodes`, `get_docs_section` (targeted) | Undocumented hub nodes = highest-priority doc gaps |
 
 **Token-efficient evaluation protocol:**
 
@@ -176,11 +187,18 @@ Per dimension, use the corresponding **CRG MCP tools** (available once
 6. **Gaps** — Cross-reference CRG knowledge_gaps with tool findings
 
 **Token discipline for Tier 3:**
-- Read CRG output first; code second (only for files CRG flagged)
-- Spot-read 2-5 specific functions CRG identified as problematic
+- Call `get_minimal_context` first (always) — orients analysis in ~100 tokens
+- Read `crg_reconnaissance.json` for pre-identified hotspots in this dimension
+- Read CRG tool output second; code third (only for files CRG flagged)
+- Spot-read 2–5 specific functions CRG identified as problematic
 - NEVER read whole files if CRG can answer the question
 - Keep findings list ≤ 7 items
-- Target: -30 to -50% token reduction vs pure-code-reading approach
+- Target: −30 to −50% token reduction vs pure-code-reading approach
+
+**Additional targeted tools (call as needed):**
+- `query_graph_tool(pattern="tests_for", target="<hub_node>")` — verify hub nodes have explicit tests
+- `traverse_graph_tool(query="<function>", mode="bfs", depth=2)` — fan-in/fan-out for a specific node
+- `query_graph_tool(pattern="callers_of", target="<function>")` — who calls this function
 
 **Graceful degradation:** If CRG is not installed or graph is empty, the
 evaluation still works — just with higher token cost. The framework must

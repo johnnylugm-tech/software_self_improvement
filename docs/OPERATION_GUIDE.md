@@ -19,18 +19,42 @@ code-review-graph install --platform claude-code --repo . -y
 
 ## Round N Workflow
 
-### Phase 1: Setup (CLI, ~1 min)
+### Phase 1: Setup (CLI, ~1–2 min)
 
 ```bash
 # 1a. Resolve config (normalize weights, validate)
 python3 scripts/config_loader.py config.example.yaml > config.json
 
-# 1b. Resolve target (clone or use local repo)
+# 1b. Resolve target (clone or use local repo) + CRG auto-init
 python3 scripts/setup_target.py <github-url-or-local-path> > target.path
+# Stderr: "[CRG] ✓ Ready — 342 nodes (auto-built)" or "[CRG] Not available — ..."
+# Writes: .sessi-work/crg_status.json
 
 # 1c. Initialize issue registry (first round only)
 # Already exists at .sessi-work/issue_registry.json after round 1
 ```
+
+---
+
+### Phase 1.5: CRG Structural Reconnaissance (first session only, ~3 min)
+
+*Only runs if `crg_status.json` shows `available: true`.*
+
+Follow `prompts/crg_reconnaissance.md`. Runs 9 CRG MCP tool calls:
+
+| Tool | Purpose |
+|------|---------|
+| `get_minimal_context` | Orientation + risk score (~100 tokens) |
+| `list_graph_stats` | Baseline node/edge/file counts |
+| `get_suggested_questions` | Auto-generated investigation priorities |
+| `get_hub_nodes` + `get_bridge_nodes` | High-risk components |
+| `list_communities` + `get_community` | Module cohesion map |
+| `get_knowledge_gaps` | Untested hotspots |
+| `get_surprising_connections` | Unexpected cross-module coupling |
+| `refactor_tool(dead_code)` | Unreferenced functions/classes |
+
+Outputs: `.sessi-work/crg_reconnaissance.json` + pre-seeded issues in registry.
+Token cost: ~3,900 (vs ~10,000+ for blind file reading).
 
 ---
 
@@ -382,7 +406,8 @@ If output is non-empty, go back to Phase 7 and update registry with commit SHAs.
 
 | Phase | Tool | Command | Output |
 |-------|------|---------|--------|
-| 1. Setup | CLI | `config_loader.py`, `setup_target.py` | config.json, target.path |
+| 1. Setup | CLI | `config_loader.py`, `setup_target.py` | config.json, target.path, crg_status.json |
+| **1.5. Recon** | **Claude + CRG** | **`crg_reconnaissance.md` (9 MCP tools)** | **crg_reconnaissance.json + pre-seeded issues** |
 | 2a. Route | CLI | `llm_router.py` | tier + provider |
 | 2b. Run Tools | CLI | tooling commands (pylint, pytest, etc.) | .txt files |
 | 2b. Evaluate T1/2 | Gemini | MCP call | tool_score + llm_score |

@@ -126,8 +126,27 @@ Iterate the `open_issues.json` queue. For each issue:
 1. Record pre-fix state:
    - Issue metadata: id, severity, dimension, file:line, message
    - Run dimension tool → baseline score
-   - IF CRG available: call get_impact_radius for the issue's file
-     → record hub/bridge status of the function being modified
+   - IF CRG available:
+
+     a. Orientation (~100 tokens — always first):
+        [USE mcp__code-review-graph__get_minimal_context_tool]
+        task: "fix <dimension> issue: <message>"
+        changed_files: ["<file>"]
+
+     b. Pre-fix impact context (replaces manual file reads):
+        [USE mcp__code-review-graph__get_review_context_tool]
+        changed_files: ["<file with issue>"]
+        detail_level: "minimal"   ← token-efficient
+        include_source: true
+        max_lines_per_file: 100
+
+        Returns: impact radius + source snippets + review guidance.
+        Use this instead of Read tool for the affected file — saves
+        a full file read and adds structural context simultaneously.
+
+     c. Impact radius (hub/bridge status):
+        [USE mcp__code-review-graph__get_impact_radius_tool]
+        → record hub/bridge status of the function being modified
 
 2. Apply fix (minimal, targeted change addressing this specific issue)
 

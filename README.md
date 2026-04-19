@@ -135,9 +135,10 @@ See `docs/EXTENDED_DIMENSIONS.md` for detailed guide.
 ### 4-Step Execution
 
 1. **Resolve Configuration** → Load & merge defaults, validate dims
-2. **Resolve Target** → Clone repo or use local path, set up git
-3. **Iterate Rounds** → Evaluate → Score → Verify → Improve (repeat N times)
-4. **Final Report** → Trajectory, evidence, recommendation
+2. **Resolve Target** → Clone repo or use local path, set up git; CRG auto-built
+3. **CRG Reconnaissance** *(if CRG installed)* → 9-tool structural scan; pre-seed issues
+4. **Iterate Rounds** → Evaluate → Score → Verify → Improve (repeat N times)
+5. **Final Report** → Trajectory, evidence, recommendation
 
 ### Per-Round Loop
 
@@ -184,25 +185,28 @@ See `docs/ANTI_BIAS.md` for detailed analysis and tuning.
 
 ## Code Review Graph Integration (Optional)
 
-The framework integrates with **Code Review Graph (CRG)** for enhanced architecture analysis, reducing Tier 3 evaluation token cost by 30-50% while improving accuracy.
+The framework integrates with **Code Review Graph (CRG)** — 20 of 27 MCP tools utilized — reducing Tier 3 evaluation token cost by 30–50% while surfacing structural issues that dimension tools cannot see.
 
 ### What CRG Adds
 
-**Three integration points:**
+**Four integration points:**
 
-1. **Tier 3 Evaluation** — Before reading source code, query CRG MCP tools to get:
-   - Hub nodes (architectural hotspots)
-   - Bridge nodes (chokepoints)
-   - Large functions (readability issues)
-   - Knowledge gaps
-   - Instead of: full codebase read → **Result: -30-50% tokens, better accuracy**
+1. **Structural Reconnaissance (Step 2.5, once per session)** — Before the first evaluation round, 9 CRG queries build a structural intelligence baseline (~3,900 tokens vs ~10,000+ for blind file reading):
+   - **High-risk components** — hub + bridge nodes with high centrality
+   - **Untested hotspots** — hub nodes in knowledge gaps → pre-seeded as `high` issues
+   - **Module cohesion** — low-cohesion communities → pre-seeded as `medium` issues
+   - **Unexpected couplings** — surprising cross-module edges → pre-seeded as `medium` issues
+   - **Dead code** — unreferenced functions/classes → pre-seeded as `low` issues
+   - Outputs `crg_reconnaissance.json` which guides all subsequent dimension evaluations
 
-2. **Pre-Commit Safety Gate** — Before applying a fix:
-   - Check if change touches hub/bridge nodes
-   - Check risk_score ≥ 0.7
-   - **If risky: defer instead of commit** (prevents architectural regressions)
+2. **Tier 3 Evaluation** — Before reading source code, `get_minimal_context` (~100 tokens) orients each dimension evaluation; then dimension-specific tools (hub nodes, bridge nodes, community cohesion, flow analysis) replace blind code reading → **−30 to −50% tokens, better accuracy**
 
-3. **Post-Round Structural Verification** — After each round:
+3. **Pre-Fix Context + Safety Gate** — Before each fix:
+   - `get_review_context` replaces manual file reads (impact + source + guidance in one call)
+   - `get_impact_radius` records hub/bridge status of the modified function
+   - risk_score ≥ 0.7 or hub/bridge touch → defer instead of commit (prevents architectural regressions)
+
+4. **Post-Round Structural Verification** — After each round:
    - Detect architectural drift
    - Auto-register test coverage gaps
    - Trigger revert protocol if drift > 0.4

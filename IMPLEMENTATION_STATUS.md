@@ -12,11 +12,13 @@ Complete implementation of auto-research-style quality improvement framework wit
 
 ### ✅ Core Framework (100%)
 
-- [x] **SKILL.md** — Entry point & 4-step execution contract
+- [x] **SKILL.md** — Entry point & 5-step execution contract
   - Step 1: Resolve configuration (YAML → JSON)
-  - Step 2: Resolve target (clone repo or use local path)
+  - Step 2: Resolve target (clone repo or use local path); CRG auto-built transparently
+  - Step 2.5: CRG Structural Reconnaissance (once per session; pre-seeds issue registry)
   - Step 3: Iterate rounds (3 default: evaluate → score → verify → checkpoint → early-stop → improve)
   - Step 4: Final report (trajectory with evidence citations)
+  - CRG integration: 4 integration points, 20 of 27 MCP tools utilized
 
 - [x] **Configuration System**
   - `config.example.yaml` — 12 core dimensions (all enabled by default)
@@ -85,7 +87,8 @@ Complete implementation of auto-research-style quality improvement framework wit
 - [x] **README.md** — Complete overview
   - Features, quick start, configuration
   - 12 core dimensions + 5 extended dimensions (table format)
-  - How it works (4-step execution + per-round loop)
+  - How it works (5-step execution + per-round loop)
+  - CRG integration: 4 integration points, 20 of 27 MCP tools, reconnaissance phase
   - Anti-bias defenses (7 layers)
   - Installation, usage, output structure
   - Architecture, performance, limitations
@@ -162,23 +165,34 @@ Complete implementation of auto-research-style quality improvement framework wit
 
 ```
 harness-quality-framework/
-├── SKILL.md                              # Entry point & execution contract
+├── SKILL.md                              # Entry point & execution contract (5-step)
 ├── README.md                             # Complete overview
-├── config.example.yaml                   # Standard config (9 dims)
+├── config.example.yaml                   # Standard config (12 core dims)
 ├── config.advanced.yaml                  # Extended config (17 dims: 12 core + 5 extended)
 ├── EXTENDED_DIMS_STATUS.md              # Tool availability status
 ├── IMPLEMENTATION_STATUS.md             # This file
 ├── docs/
 │   ├── ANTI_BIAS.md                     # 7-layer bias defense analysis
-│   ├── EXTENDED_DIMENSIONS.md           # 7-dimension detailed guide
-│   └── INSTALL_EXTENDED_DIMS.md         # Tool installation guide
+│   ├── EXTENDED_DIMENSIONS.md           # 5 extended dimension guide
+│   ├── INSTALL_EXTENDED_DIMS.md         # Tool installation guide
+│   └── OPERATION_GUIDE.md               # Complete end-to-end workflow
+├── prompts/
+│   ├── crg_reconnaissance.md            # Step 2.5: CRG structural scan (NEW)
+│   ├── evaluate_dimension.md            # Per-dimension evaluation protocol
+│   ├── improvement_plan.md              # Issue-driven fix loop
+│   ├── verify_round.md                  # Anti-bias cross-check
+│   └── final_report.md                  # Report generation protocol
 └── scripts/
     ├── config_loader.py                 # YAML → JSON resolver
-    ├── setup_target.py                  # Clone/setup repository
+    ├── setup_target.py                  # Clone/setup repo + CRG auto-init
+    ├── crg_integration.py               # CRG CLI wrapper (ensure_ready, blast, risky)
     ├── score.py                         # Score aggregation
     ├── verify.py                        # Anti-bias verification
     ├── checkpoint.py                    # Round snapshots & reports
-    └── install_extended_tools.sh        # Tool installer
+    ├── issue_tracker.py                 # Issue registry CRUD
+    ├── report_gen.py                    # Final report generator
+    ├── verify_tools.py                  # Tool availability check
+    └── install_extended_tools.sh        # Extended tool installer
 ```
 
 ## Tool Availability Status
