@@ -45,8 +45,78 @@ def _run_crg(args: list, repo: str = None) -> dict:
     try:
         return json.loads(out)
     except json.JSONDecodeError:
-        # Some CRG commands print text (e.g., status); return as-is
         return {"_raw": out.strip()}
+
+
+def _graph_node_count(repo: str) -> int:
+    """Return number of nodes in graph, or 0 if unbuilt / unavailable."""
+    status = _run_crg(["status"], repo)
+    raw = status.get("_raw", "")
+    # Parse "Nodes: 42" from status output
+    for line in raw.splitlines():
+        if "Nodes:" in line:
+            try:
+                return int(line.split("Nodes:")[-1].split()[0].strip())
+            except (ValueError, IndexError):
+                pass
+    return 0 if "_error" not in status else -1
+
+
+def ensure_ready(repo: str, build_timeout: int = 300) -> dict:
+    """
+    Ensure CRG is ready for use. Transparent to the caller — handles all cases:
+
+      - Not installed  → {available: False, reason: "not installed"}
+      - Installed, no graph → auto-build, then return ready status
+      - Installed, graph ready → return ready status immediately
+
+    Returns a status dict that is written to .sessi-work/crg_status.json
+    by setup_target.py so every later step can read it without re-checking.
+    """
+    if not _crg_available():
+        return {
+            "available": False,
+            "reason": "code-review-graph not installed — framework runs without CRG",
+            "action": "none",
+        }
+
+    node_count = _graph_node_count(repo)
+
+    if node_count == 0:
+        # Graph not built — auto-build
+        print("[CRG] Graph not found. Building now (this may take 30–120s)…",
+              file=sys.stderr)
+        try:
+            subprocess.run(
+                [CRG_BIN, "build", "--repo", repo],
+                check=True,
+                timeout=build_timeout,
+            )
+            node_count = _graph_node_count(repo)
+            action = "auto_built"
+            print(f"[CRG] Graph built: {node_count} nodes.", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            return {
+                "available": False,
+                "reason": f"build failed: {str(e)[:120]}",
+                "action": "build_failed",
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "available": False,
+                "reason": f"build timed out after {build_timeout}s",
+                "action": "build_timeout",
+            }
+    else:
+        action = "already_built"
+        print(f"[CRG] Graph ready: {node_count} nodes.", file=sys.stderr)
+
+    return {
+        "available": True,
+        "node_count": node_count,
+        "action": action,        # "auto_built" | "already_built"
+        "repo": repo,
+    }
 
 
 def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
@@ -67,10 +137,11 @@ def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
     if not _crg_available():
         return {"error": "code-review-graph not installed; falling back to full code read"}
 
-    # Status first — confirm graph is built
-    status = _run_crg(["status"], repo)
-    if "_raw" in status and "Nodes: 0" in status["_raw"]:
-        return {"error": "graph not built; run `code-review-graph build` first"}
+    # Auto-ensure graph is ready (build if empty)
+    if _graph_node_count(repo) == 0:
+        ready = ensure_ready(repo)
+        if not ready["available"]:
+            return {"error": ready["reason"]}
 
     # We use the CLI subcommands that emit JSON. For hub/bridge/gap analysis,
     # CRG exposes these via MCP tools — when run standalone we rely on the
@@ -134,6 +205,7 @@ def _help():
     print(f"""Usage: {sys.argv[0]} <command> [args]
 
 Commands:
+  ensure <repo>                      Auto-init: install check + build if needed (used by setup_target.py)
   context <repo>                     Compressed architecture snapshot (Tier 3)
   blast <repo> [base=HEAD]           Blast radius of diff vs base
   risky <repo> [base=HEAD] [threshold=0.7]  Exit 1 if fix is too risky
@@ -151,6 +223,12 @@ def main():
 
     if cmd == "check":
         sys.exit(0 if _crg_available() else 1)
+
+    if cmd == "ensure":
+        repo = sys.argv[2] if len(sys.argv) > 2 else "."
+        result = ensure_ready(repo)
+        print(json.dumps(result, indent=2))
+        sys.exit(0 if result["available"] else 1)
 
     if cmd == "context":
         repo = sys.argv[2] if len(sys.argv) > 2 else "."

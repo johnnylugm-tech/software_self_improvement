@@ -15,8 +15,16 @@ Implements an auto-research-style quality improvement loop for GitHub repos or l
 ### Step 2: Resolve Target
 - Clone GitHub repo (if URL) or use local folder path
 - Set up working directory with git tracking
+- **Auto-initialize CRG** (transparent): detect if `code-review-graph` is installed;
+  if yes and no graph exists → auto-build; write result to `.sessi-work/crg_status.json`
 - Initialize issue registry at `.sessi-work/issue_registry.json` (persists across rounds)
 - Output: TARGET_PATH to stdout
+
+```bash
+python3 scripts/setup_target.py <github-url-or-local-path> [work_dir]
+# Stderr shows CRG status: "[CRG] ✓ Ready — 342 nodes (auto-built)"
+#                        or "[CRG] Not available — not installed. Framework will run without CRG."
+```
 
 ### Step 3: Iterate Rounds (3 default, configurable)
 Each round: **3a-evaluate → 3b-score → 3c-verify → 3d-checkpoint → 3e-early-stop → 3f-improve**

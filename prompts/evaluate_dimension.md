@@ -139,16 +139,21 @@ Read tool output from `.sessi-work/round_<n>/tools/<dimension>.txt`.
 **Step 2a (Tier 3 ONLY): Query Code Review Graph for compressed context**
 
 Before reading source code, pull pre-computed structural intel from the CRG
-knowledge graph. This replaces blind code reading with targeted questions:
+knowledge graph. This replaces blind code reading with targeted questions.
+
+**CRG status is already resolved** — `setup_target.py` auto-detected and built
+the graph at session start. Read its output:
 
 ```bash
-# Ensure graph exists; build if first run
-python3 scripts/crg_integration.py check || echo "CRG not installed — fall back to full read"
-code-review-graph status --repo <repo_path> 2>&1 | grep -q "Nodes: 0" \
-  && code-review-graph build --repo <repo_path>
+cat .sessi-work/crg_status.json
+# → {"available": true, "node_count": 342, "action": "auto_built", "repo": "..."}
+# OR {"available": false, "reason": "code-review-graph not installed — ..."}
 ```
 
-Then, per dimension, use the corresponding **CRG MCP tools** (available once
+If `available: true` → proceed to CRG MCP tools below.
+If `available: false` → skip CRG; fall back to full code reading (higher token cost).
+
+Per dimension, use the corresponding **CRG MCP tools** (available once
 `.mcp.json` is loaded — the `code-review-graph` server exposes 27 tools):
 
 | Dimension | CRG MCP tools to call | What to ask |
