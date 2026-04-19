@@ -190,49 +190,150 @@ The framework integrates with **Code Review Graph (CRG)** for enhanced architect
    - Auto-register test coverage gaps
    - Trigger revert protocol if drift > 0.4
 
-### Installation (One-Time)
+### Status Check
 
 ```bash
-# 1. Install CRG
-code-review-graph install --platform claude-code --repo .
+# Anytime: see CRG status
+code-review-graph status --repo .
+
+# If graph shows "Nodes: 0": rebuild with
 code-review-graph build --repo .
 
-# 2. Restart Claude Desktop to load MCP tools
-# Verify in Claude Code: should see 27 code-review-graph MCP tools available
-
-# Framework automatically uses CRG if available; gracefully degrades without it
+# If tools not showing in Claude Code after restart: re-run
+code-review-graph install --platform claude-code --repo .
 ```
 
 **Framework behavior:**
-- ✓ **With CRG:** Token-efficient Tier 3 eval + architectural safety
-- ✓ **Without CRG:** Works fine (just higher token cost for Tier 3)
+- ✓ **With CRG:** -30-50% Tier 3 tokens + architectural safety gates
+- ✓ **Without CRG:** Works fine (higher Tier 3 token cost, no safety gates)
+- ✓ **Graceful degradation:** All features optional
 
-See `docs/OPERATION_GUIDE.md` for complete CRG workflow with CLI commands.
+See `docs/OPERATION_GUIDE.md` for complete CRG workflow.
 
 ## Installation
 
-### Prerequisites
+### Step 1️⃣: Verify Tool Status (Always Run First)
 
-**Core tools** (24 tools, mostly pre-installed):
-- Python 3.8+ with pip3
-- Node.js 14+ with npm
-- Major language compilers (gcc, rustc, javac, etc.)
-
-Check availability:
 ```bash
+# Check what's already installed
 python3 scripts/verify_tools.py
+
+# See detailed installation guide for missing tools
+python3 scripts/verify_tools.py --install-guide
 ```
 
-**Extended dimension tools** (13 tools, optional):
+**Output shows:**
+- ✓ Core tools (must-have)
+- ✓ Extended tools (optional)
+- ✓ CRG status (optional, recommended)
+
+### Step 2️⃣: Install Missing Tools (First Time Only)
+
+**Core tools:**
+- Usually pre-installed (Python, Node, git, etc.)
+- If missing: follow guide from `verify_tools.py --install-guide`
+
+**Extended tools (optional, only if needed):**
 ```bash
-# See which tools are missing
-./scripts/install_extended_tools.sh
+# First time: full install
+./scripts/install_extended_tools.sh --high   # Mutation testing (foundation)
+./scripts/install_extended_tools.sh --medium # Property testing + fuzzing
+./scripts/install_extended_tools.sh --low    # License + observability
 
-# Install by priority
-./scripts/install_extended_tools.sh --all
+# Already installed? Skip this step
+# (Re-running automatically updates to latest versions)
 ```
 
-See `docs/INSTALL_EXTENDED_DIMS.md` for detailed installation steps.
+See `docs/INSTALL_EXTENDED_DIMS.md` for detailed per-tool steps.
+
+### Step 3️⃣: CRG Setup (First Time Only, Optional but Recommended)
+
+**First time:**
+```bash
+# One-time setup
+code-review-graph install --platform claude-code --repo .
+code-review-graph build --repo .
+
+# Restart Claude Desktop to load MCP tools
+```
+
+**Already done?** Skip to running the framework.
+
+**Verify:**
+```bash
+# Check CRG status
+code-review-graph status --repo .
+python3 scripts/verify_tools.py --crg
+```
+
+### Step 4️⃣: Ready to Run
+
+```bash
+# Copy config (first time only)
+cp config.example.yaml config.yaml
+
+# Run framework
+claude-code run quality-improvement
+```
+
+## Quick Start Scenarios
+
+### Scenario 1: First Time Setup (Recommended)
+
+```bash
+# Step 1: Check installed tools
+python3 scripts/verify_tools.py
+
+# Step 2: Install missing extended tools (optional)
+./scripts/install_extended_tools.sh --high
+
+# Step 3: Setup CRG (optional, recommended)
+code-review-graph install --platform claude-code --repo .
+code-review-graph build --repo .
+# Restart Claude Desktop
+
+# Step 4: Run
+cp config.example.yaml config.yaml
+claude-code run quality-improvement
+```
+
+### Scenario 2: Already Have Tools
+
+```bash
+# No reinstall needed - just run
+cp config.example.yaml config.yaml
+claude-code run quality-improvement
+
+# Optional: update CRG (won't re-install MCP)
+code-review-graph update --repo .
+```
+
+### Scenario 3: Full Setup (Extended Tools + CRG)
+
+```bash
+# First time only
+python3 scripts/verify_tools.py
+./scripts/install_extended_tools.sh --all
+code-review-graph install --platform claude-code --repo .
+code-review-graph build --repo .
+
+# Configure with all dimensions
+cp config.advanced.yaml config.yaml
+# Edit to enable desired extended dims
+
+# Run
+claude-code run quality-improvement
+```
+
+### Scenario 4: Subsequent Runs
+
+```bash
+# Just run - tools already installed
+claude-code run quality-improvement
+
+# Optional: keep CRG graph fresh
+code-review-graph update --repo .
+```
 
 ## Usage
 
