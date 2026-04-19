@@ -9,6 +9,7 @@ Issue-driven completion: surfaces open_critical_count / open_high_count from
 the issue registry so early-stop can gate on quality, not score alone.
 """
 
+import os
 import sys
 import json
 from pathlib import Path
@@ -45,7 +46,53 @@ def load_scores(round_dir):
     return scores
 
 
-def compute_overall_score(scores, config, registry=None):
+def _apply_crg_subscores(scores, crg_metrics):
+    """
+    Deep-integration hook: fold CRG-derived sub-scores INTO per-dimension
+    scores so structural signal can PULL DOWN a dimension that looks fine
+    on its surface tool alone.
+
+    Contract: we take the MIN of the tool score and the CRG sub-score so
+    CRG can only REDUCE, never inflate. This protects against the failure
+    mode where a lint-clean repo hides a broken architecture.
+
+    Applied to:
+      architecture     ← community_cohesion.score
+      error_handling   ← flow_coverage.score
+
+    Silently no-op if crg_metrics is missing or lacks the keys.
+    """
+    if not crg_metrics:
+        return scores
+
+    adjustments = {}
+
+    cohesion = (crg_metrics.get("community_cohesion") or {}).get("score")
+    if cohesion is not None and "architecture" in scores:
+        orig = scores["architecture"].get("score", 100)
+        adjusted = min(orig, cohesion)
+        if adjusted != orig:
+            scores["architecture"]["score"] = adjusted
+            scores["architecture"]["crg_adjusted_from"] = orig
+            scores["architecture"]["crg_cohesion_score"] = cohesion
+            adjustments["architecture"] = {"from": orig, "to": adjusted,
+                                           "reason": f"community_cohesion={cohesion}"}
+
+    flow = (crg_metrics.get("flow_coverage") or {}).get("score")
+    if flow is not None and "error_handling" in scores:
+        orig = scores["error_handling"].get("score", 100)
+        adjusted = min(orig, flow)
+        if adjusted != orig:
+            scores["error_handling"]["score"] = adjusted
+            scores["error_handling"]["crg_adjusted_from"] = orig
+            scores["error_handling"]["crg_flow_score"] = flow
+            adjustments["error_handling"] = {"from": orig, "to": adjusted,
+                                             "reason": f"flow_coverage={flow}"}
+
+    return adjustments
+
+
+def compute_overall_score(scores, config, registry=None, crg_metrics=None):
     """
     Compute weighted overall score from per-dimension scores
 
@@ -53,6 +100,9 @@ def compute_overall_score(scores, config, registry=None):
         scores: dict of dimension_name -> {score, tool_score, llm_score, ...}
         config: resolved config with dimensions and weights
         registry: optional issue-registry dict for open-issue counts
+        crg_metrics: optional dict from crg_analysis.py metrics output.
+            When provided, architecture/error_handling scores are min'd
+            against the CRG community-cohesion / flow-coverage sub-scores.
 
     Returns:
         {
@@ -65,9 +115,13 @@ def compute_overall_score(scores, config, registry=None):
             "open_medium_count": int,
             "open_total": int,
             "failing_dimensions": [...],
-            "breakdown": {...}
+            "breakdown": {...},
+            "crg_adjustments": {...}       # what CRG pulled down, and why
         }
     """
+    # Apply CRG sub-score adjustments first (deep integration)
+    crg_adjustments = _apply_crg_subscores(scores, crg_metrics) or {}
+
     dimensions = config["dimensions"]
     # Support both legacy `target` and new `score_gate` naming
     quality_cfg = config.get("quality", {})
@@ -149,6 +203,7 @@ def compute_overall_score(scores, config, registry=None):
         "open_total": open_total,
         "failing_dimensions": failing,
         "breakdown": breakdown,
+        "crg_adjustments": crg_adjustments,
     }
 
 
@@ -158,6 +213,7 @@ def main():
         print("  round_dir: path to .sessi-work/round_<n>")
         print("  config.json: resolved config (optional, uses defaults if omitted)")
         print("  issue_registry.json: persistent issue registry (optional)")
+        print("  env CRG_METRICS_PATH: path to crg_metrics.json (default: .sessi-work/crg_metrics.json)")
         sys.exit(1)
 
     round_dir = sys.argv[1]
@@ -192,8 +248,23 @@ def main():
             if default_reg.exists():
                 registry = issue_tracker.load(str(default_reg))
 
+        # Load CRG metrics (deep-integration input, optional)
+        crg_metrics = None
+        crg_path = os.environ.get(
+            "CRG_METRICS_PATH",
+            str(Path(round_dir).parent / "crg_metrics.json"),
+        )
+        if Path(crg_path).exists():
+            try:
+                with open(crg_path) as f:
+                    crg_metrics = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                crg_metrics = None
+
         # Compute score
-        result = compute_overall_score(scores, config, registry=registry)
+        result = compute_overall_score(
+            scores, config, registry=registry, crg_metrics=crg_metrics
+        )
 
         print(json.dumps(result, indent=2))
 

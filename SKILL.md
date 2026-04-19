@@ -301,7 +301,8 @@ See `docs/ANTI_BIAS.md` for detailed analysis.
 ## Code Review Graph Integration
 
 When [Code Review Graph](https://github.com/code-review-graph) (CRG) is installed,
-**four integration points** activate automatically (20 of 27 MCP tools utilized):
+**four integration points** activate automatically (22 of 27 MCP tools utilized,
+6 with deep-integration formulas — see `crg_analysis.py`):
 
 1. **Structural reconnaissance (crg_reconnaissance.md — Step 2.5):** runs once
    per session before the first evaluation round. Uses `get_minimal_context`,
@@ -364,6 +365,37 @@ code-review-graph install --platform claude-code --repo <target>
 
 Framework **gracefully degrades** without CRG — all integration points skip
 silently; only token efficiency and structural verification are lost.
+
+### Deep Integration Layer (`scripts/crg_analysis.py`)
+
+"Used" ≠ "deeply integrated." A CRG tool is **deeply integrated** when its
+output drives a deterministic decision — a formula, a threshold, a severity
+bucket — without LLM interpretation. The deep-integration layer lives in
+`scripts/crg_analysis.py` and produces `.sessi-work/crg_metrics.json`,
+consumed directly by `score.py` and the prompts.
+
+**Six concrete deep-integration points:**
+
+| # | Signal              | Deterministic output                         | Consumer                |
+|---|---------------------|----------------------------------------------|-------------------------|
+| 1 | `risk_score`        | `eval_depth` = `deep` / `standard` / `fast`  | evaluate_dimension.md   |
+| 2 | community cohesion  | architecture sub-score 0–100                 | score.py (min-with-tool)|
+| 3 | flow coverage       | error_handling sub-score 0–100               | score.py (min-with-tool)|
+| 4 | dead-code ratio     | `escalate_severity` low→medium if >5%        | improvement_plan.md     |
+| 5 | hub fan-in          | severity bucket critical/high/medium/low     | evaluate_dimension.md   |
+| 6 | suggested questions | auto-seeded registry issues via severity map | crg_reconnaissance.md   |
+
+All thresholds are explicit and ENV-overridable (`CRG_RISK_DEEP`,
+`CRG_COHESION_HEALTHY`, etc.) — see `crg_reconnaissance.md §Step 11` for
+the full table. Inspect effective values:
+
+```bash
+python3 scripts/crg_analysis.py thresholds
+```
+
+The contract for sub-score folding is `score = min(tool_score, crg_score)` —
+CRG can **only pull a dimension score down**, never inflate it. This
+prevents the failure mode where a lint-clean repo hides broken architecture.
 
 ## References
 

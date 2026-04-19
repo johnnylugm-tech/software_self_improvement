@@ -196,6 +196,32 @@ python3 scripts/issue_tracker.py add \
 
 ---
 
+## Step 8a: Auto-Seed Registry from Suggested Questions
+
+Deep-integration step. CRG's own prioritization (`get_suggested_questions`)
+maps directly to registry issues — no LLM interpretation needed.
+
+```bash
+python3 scripts/crg_analysis.py seed_issues \
+  .sessi-work/crg_reconnaissance.json \
+  .sessi-work/issue_registry.json 0
+```
+
+Severity map (deterministic, reviewable in `scripts/crg_analysis.py`):
+
+| CRG category              | Registry dimension | Severity |
+|---------------------------|--------------------|----------|
+| bridge_needs_tests        | test_coverage      | high     |
+| untested_hubs             | test_coverage      | high     |
+| untested_hotspots         | test_coverage      | medium   |
+| cross_community_coupling  | architecture       | medium   |
+| thin_communities          | architecture       | medium   |
+| god_modules               | architecture       | high     |
+| surprising_connections    | architecture       | medium   |
+| dead_code                 | architecture       | low      |
+
+---
+
 ## Step 9: Write Reconnaissance Report
 
 Save to `.sessi-work/crg_reconnaissance.json`:
@@ -246,6 +272,63 @@ IF risk_score > 0.7             → ALL Tier 3 dims: extra scrutiny
 Claude reads `evaluation_priorities` in Step 3a to adjust analysis depth
 per dimension — focusing tool runs and LLM reasoning on identified hotspots
 rather than uniform full-codebase scans.
+
+---
+
+## Step 11: Compute Structured Metrics (Deep-Integration Hook)
+
+Turn raw reconnaissance data into deterministic numeric metrics that
+downstream scripts (`score.py`, `evaluate_dimension.md`) consume directly.
+
+```bash
+python3 scripts/crg_analysis.py metrics \
+  .sessi-work/crg_reconnaissance.json \
+  .sessi-work/crg_metrics.json
+```
+
+Emits `.sessi-work/crg_metrics.json` with:
+
+| Key                         | Meaning                                        |
+|-----------------------------|------------------------------------------------|
+| `risk_score`                | 0.0–1.0 overall structural risk                |
+| `eval_depth`                | `deep` / `standard` / `fast` — token-budget gate |
+| `community_cohesion.score`  | 0–100, pulled into architecture dimension      |
+| `flow_coverage.score`       | 0–100, pulled into error_handling dimension    |
+| `dead_code.escalate_severity` | True/False — low→medium promotion decision  |
+| `hub_risk_map.hubs[].severity` | critical/high/medium/low per hub           |
+
+### Explicit thresholds (deterministic, reviewable)
+
+All thresholds live in `scripts/crg_analysis.py` and are ENV-overridable:
+
+| Threshold                   | Default | Effect                                    |
+|-----------------------------|---------|-------------------------------------------|
+| `CRG_RISK_DEEP`             | 0.7     | risk ≥ → `eval_depth=deep`                |
+| `CRG_RISK_FAST`             | 0.3     | risk < → `eval_depth=fast`                |
+| `CRG_COHESION_HEALTHY`      | 0.4     | cohesion ≥ → healthy community            |
+| `CRG_COMMUNITY_OVERSIZED`   | 50      | size > → god-module candidate             |
+| `CRG_DEAD_CODE_RATIO`       | 0.05    | dead/total > → escalate low→medium        |
+| `CRG_HUB_CRIT_FANIN`        | 15      | fan_in ≥ → critical severity (if untested) |
+| `CRG_HUB_HIGH_FANIN`        | 8       | fan_in ≥ → high severity (if untested)    |
+| `CRG_FLOW_GOOD_PCT`         | 80      | handled flows ≥ % → healthy               |
+
+Inspect effective values with:
+
+```bash
+python3 scripts/crg_analysis.py thresholds
+```
+
+### Eval-depth gate (for evaluate_dimension.md)
+
+```bash
+python3 scripts/crg_analysis.py depth_gate \
+  .sessi-work/crg_reconnaissance.json
+# Prints: deep | standard | fast
+```
+
+`evaluate_dimension.md` Step 3b reads this to select token budget per
+Tier 3 dimension: `deep` → full LLM reasoning + hub source read;
+`standard` → tool + LLM one-paragraph; `fast` → tool-only.
 
 ---
 

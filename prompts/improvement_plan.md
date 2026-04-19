@@ -97,6 +97,57 @@ Example:
 These issues will be surfaced in the final report under **Accepted Risks** with
 their reasons — nothing is silently dropped.
 
+### Step 2b: Dead-Code Removal Protocol (deep-integration)
+
+Issues seeded from CRG Step 8 (`refactor_tool mode=dead_code`) carry
+`evidence: "CRG refactor dead_code: zero callers + zero importers"`. These
+follow a **dedicated fix path** because "remove an unused function" has a
+deterministic verification:
+
+```
+1. Confirm still dead (guard against callers added mid-round):
+   [USE mcp__code-review-graph__refactor_tool]
+     mode: "dead_code"
+     target: "<symbol>"
+   → must return { callers: 0, importers: 0 }. If not, skip — registry
+     will auto-update last_seen_round and re-appear if still dead next round.
+
+2. Confirm not a public API / entry point:
+   - Not in `__all__` of its module
+   - Not the target of a setuptools entry_points / bin / CLI script
+   - Not a registered framework hook (pytest, click command, Flask route, etc.)
+   - Not exported from package __init__.py
+   → if ANY of these → defer with reason "public surface, needs human review"
+
+3. Remove the symbol AND any imports that become unused.
+
+4. Re-run CRG verification:
+     code-review-graph update --repo .
+   Then ensure test suite still passes.
+
+5. Standard blast-radius gate:
+     python3 scripts/crg_integration.py risky . HEAD 0.7
+   → if risky → revert, defer with reason "dead_code removal moved structural
+     risk_score above 0.7 — requires review".
+
+6. Commit per normal fix protocol:
+     git commit -m "refactor(architecture): remove dead <symbol> [issue:<id>]"
+     python3 scripts/issue_tracker.py fix ...
+```
+
+**Severity escalation rule (from `crg_metrics.json`):**
+
+```bash
+ESCALATE=$(python3 -c "import json; \
+  m=json.load(open('.sessi-work/crg_metrics.json')); \
+  print(m['dead_code']['escalate_severity'])")
+# True → treat ALL dead_code findings as medium instead of low for this round
+```
+
+When `dead/total > 5%` the repository has an architectural rot signal;
+dead-code removal is no longer a "nice-to-have" and gets queued ahead of
+other low-severity work.
+
 ### Per-dimension fix strategy and caps
 
 | Dimension | Fix Strategy | Max fixes/round |

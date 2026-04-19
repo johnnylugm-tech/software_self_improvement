@@ -18,7 +18,7 @@ Complete implementation of auto-research-style quality improvement framework wit
   - Step 2.5: CRG Structural Reconnaissance (once per session; pre-seeds issue registry)
   - Step 3: Iterate rounds (3 default: evaluate → score → verify → checkpoint → early-stop → improve)
   - Step 4: Final report (trajectory with evidence citations)
-  - CRG integration: 4 integration points, 20 of 27 MCP tools utilized
+  - CRG integration: 4 integration points + deep-integration layer, 22 of 27 MCP tools utilized (6 deeply integrated via scripts/crg_analysis.py)
 
 - [x] **Configuration System**
   - `config.example.yaml` — 12 core dimensions (all enabled by default)
@@ -88,7 +88,7 @@ Complete implementation of auto-research-style quality improvement framework wit
   - Features, quick start, configuration
   - 12 core dimensions + 5 extended dimensions (table format)
   - How it works (5-step execution + per-round loop)
-  - CRG integration: 4 integration points, 20 of 27 MCP tools, reconnaissance phase
+  - CRG integration: 4 integration points + deep-integration layer (scripts/crg_analysis.py), 22 of 27 MCP tools, reconnaissance phase, cohesion+flow sub-scores fold into score.py
   - Anti-bias defenses (7 layers)
   - Installation, usage, output structure
   - Architecture, performance, limitations

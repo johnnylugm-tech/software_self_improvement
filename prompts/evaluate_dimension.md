@@ -164,6 +164,57 @@ analysis rather than scanning the full codebase. Also check
 `.sessi-work/crg_reconnaissance.json` (written in Step 2.5) for pre-identified
 hotspots in this dimension's files.
 
+**Step 2a.1: Eval-depth gate (deep-integration, replaces free LLM judgment)**
+
+```bash
+EVAL_DEPTH=$(python3 scripts/crg_analysis.py depth_gate \
+  .sessi-work/crg_reconnaissance.json)
+# Emits: deep | standard | fast
+```
+
+| `eval_depth` | risk_score       | Token budget per Tier 3 dim                       |
+|--------------|------------------|---------------------------------------------------|
+| `deep`       | ≥ 0.7            | Full LLM reasoning + hub source read (+ flow walk) |
+| `standard`   | 0.3–0.7 (inclusive of 0.3) | Tool + LLM one-paragraph assessment      |
+| `fast`       | < 0.3            | Tool output only, skip Tier 3 LLM assessment      |
+
+The depth is a hard budget — do not read source for hub nodes if
+`EVAL_DEPTH=fast`. This replaces "LLM decides how much to look" with
+a deterministic, risk-proportional scan.
+
+**Step 2a.2: CRG metrics for sub-score pull-down (architecture / error_handling)**
+
+```bash
+cat .sessi-work/crg_metrics.json
+```
+
+Relevant fields per Tier 3 dimension:
+
+- **architecture** — `community_cohesion.score` (0–100) and
+  `community_cohesion.unhealthy[]`. `score.py` takes `min(tool_score, cohesion)`
+  so a repo with low-cohesion / oversized communities cannot score above the
+  CRG signal. Evidence: cite `name`, `cohesion`, `size` from `unhealthy[]`.
+
+- **error_handling** — `flow_coverage.score` and `flow_coverage.missing[]`.
+  `score.py` takes `min(tool_score, flow_coverage)`. Findings: one per flow
+  name in `missing[]`, severity `high` if the flow is in a hub community.
+
+- **readability / performance** — use `hub_risk_map.hubs[]`. Each hub lists
+  `fan_in` and `severity`. Large-function + hub + `severity=critical|high`
+  → register as `readability:high` (readability) or `performance:medium`
+  (performance) finding, cited with the numeric fan_in.
+
+**Explicit hub fan-in thresholds (from crg_analysis.py):**
+
+```
+fan_in ≥ 15   → critical (untested) / high (tested)
+fan_in ≥ 8    → high (untested) / medium (tested)
+fan_in <  8   → medium (untested) / low (tested)
+```
+
+Score-file severities MUST use these buckets — no free-hand severity calls
+for hub-related findings.
+
 Then, per dimension, use the corresponding **CRG MCP tools** (available once
 `.mcp.json` is loaded — the `code-review-graph` server exposes 27 tools):
 

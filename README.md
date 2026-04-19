@@ -185,11 +185,11 @@ See `docs/ANTI_BIAS.md` for detailed analysis and tuning.
 
 ## Code Review Graph Integration (Optional)
 
-The framework integrates with **Code Review Graph (CRG)** — 20 of 27 MCP tools utilized — reducing Tier 3 evaluation token cost by 30–50% while surfacing structural issues that dimension tools cannot see.
+The framework integrates with **Code Review Graph (CRG)** — 22 of 27 MCP tools utilized, 6 of them **deeply integrated** via `scripts/crg_analysis.py` — reducing Tier 3 evaluation token cost by 30–50% while surfacing structural issues that dimension tools cannot see.
 
 ### What CRG Adds
 
-**Four integration points:**
+**Four integration points + one deep-integration layer:**
 
 1. **Structural Reconnaissance (Step 2.5, once per session)** — Before the first evaluation round, 9 CRG queries build a structural intelligence baseline (~3,900 tokens vs ~10,000+ for blind file reading):
    - **High-risk components** — hub + bridge nodes with high centrality
@@ -210,6 +210,22 @@ The framework integrates with **Code Review Graph (CRG)** — 20 of 27 MCP tools
    - Detect architectural drift
    - Auto-register test coverage gaps
    - Trigger revert protocol if drift > 0.4
+
+5. **Deep-Integration Layer (`scripts/crg_analysis.py`)** — Turns raw CRG
+   outputs into deterministic numeric metrics with explicit thresholds.
+   Emits `.sessi-work/crg_metrics.json`, consumed directly by `score.py`:
+
+   | Signal              | Deterministic decision                          |
+   |---------------------|-------------------------------------------------|
+   | `risk_score`        | eval_depth = deep / standard / fast             |
+   | community cohesion  | architecture sub-score (min'd into final score) |
+   | flow coverage       | error_handling sub-score (min'd into final score) |
+   | dead-code ratio     | escalate low→medium if >5%                      |
+   | hub fan-in          | severity bucket critical/high/medium/low        |
+   | suggested_questions | auto-seeded registry issues (severity mapped)   |
+
+   All thresholds ENV-overridable (`CRG_RISK_DEEP`, `CRG_COHESION_HEALTHY`,
+   etc.). Inspect with `python3 scripts/crg_analysis.py thresholds`.
 
 ### Status Check
 
