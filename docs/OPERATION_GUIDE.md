@@ -10,9 +10,9 @@ End-to-end workflow with CLI commands and Claude Code MCP tool interactions.
 # One-time setup (if not done):
 cd /Users/johnny/Projects/harness-quality-framework
 code-review-graph install --platform claude-code --repo . -y
-code-review-graph build --repo .
 
 # Restart Claude Desktop app to load CRG MCP tools
+# Graph build is automatic — setup_target.py detects and builds on first run
 ```
 
 ---
@@ -539,7 +539,7 @@ python3 scripts/report_gen.py /path/to/myapp .sessi-work issue_registry.json 85 
 |-------|-------|-----|
 | CRG tools not showing in Claude Code | Global config not updated | `code-review-graph install --platform claude-code` to global config |
 | `crg_integration.py check` fails | CRG not installed | `pipx install code-review-graph` |
-| Graph shows "Nodes: 0" | Build not run | `code-review-graph build --repo .` |
+| Graph shows "Nodes: 0" after session | Auto-build failed | Check `.sessi-work/crg_status.json` for reason; retry: `code-review-graph build --repo .` |
 | Blast radius is always 0.0 | Graph outdated | `code-review-graph update --repo .` |
 | Issue registry orphaned (open issue fixed but not marked) | Issue tracker not called | Always call `issue_tracker.py fix` after successful tool re-run |
 

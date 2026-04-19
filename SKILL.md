@@ -297,8 +297,8 @@ three integration points activate automatically:
 **Installation** (one-time, per target repo):
 ```bash
 code-review-graph install --platform claude-code --repo <target>
-code-review-graph build --repo <target>
 # Restart Claude Code to load .mcp.json
+# Graph build is automatic — setup_target.py runs it on first session
 ```
 
 Framework **gracefully degrades** without CRG — all integration points skip

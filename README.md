@@ -210,15 +210,15 @@ The framework integrates with **Code Review Graph (CRG)** for enhanced architect
 ### Status Check
 
 ```bash
-# Anytime: see CRG status
-code-review-graph status --repo .
+# Anytime: see CRG status (auto-initialized by framework at session start)
+cat .sessi-work/crg_status.json
 
-# If graph shows "Nodes: 0": rebuild with
-code-review-graph build --repo .
-
-# If tools not showing in Claude Code after restart: re-run
+# If MCP tools not showing in Claude Code after restart: re-run install
 code-review-graph install --platform claude-code --repo .
 ```
+
+> **Graph build is automatic** — `setup_target.py` detects if the graph is
+> missing and runs `code-review-graph build` transparently. No manual step needed.
 
 **Framework behavior:**
 - ✓ **With CRG:** -30-50% Tier 3 tokens + architectural safety gates
@@ -267,20 +267,21 @@ See `docs/INSTALL_EXTENDED_DIMS.md` for detailed per-tool steps.
 
 **First time:**
 ```bash
-# One-time setup
+# Register CRG MCP tools with Claude Code (one-time)
 code-review-graph install --platform claude-code --repo .
-code-review-graph build --repo .
 
 # Restart Claude Desktop to load MCP tools
 ```
+
+> **Graph build is automatic** — no need to run `code-review-graph build` manually.
+> The framework detects a missing graph and builds it transparently at session start.
 
 **Already done?** Skip to running the framework.
 
 **Verify:**
 ```bash
-# Check CRG status
-code-review-graph status --repo .
 python3 scripts/verify_tools.py --crg
+# Or after first run: cat .sessi-work/crg_status.json
 ```
 
 ### Step 4️⃣: Start in Claude Code
@@ -308,8 +309,7 @@ python3 scripts/verify_tools.py
 
 # Setup CRG (optional, recommended for token savings)
 code-review-graph install --platform claude-code --repo .
-code-review-graph build --repo .
-# Restart Claude Desktop
+# Restart Claude Desktop (graph is auto-built by framework on first run)
 
 # Prepare config
 cp config.example.yaml config.yaml
@@ -331,7 +331,7 @@ Then in Claude Code: `"Run quality improvement on /path/to/repo"`
 python3 scripts/verify_tools.py
 ./scripts/install_extended_tools.sh --all
 code-review-graph install --platform claude-code --repo .
-code-review-graph build --repo .
+# Restart Claude Desktop (graph auto-built on first framework run)
 
 # Configure with all dimensions
 cp config.advanced.yaml config.yaml
