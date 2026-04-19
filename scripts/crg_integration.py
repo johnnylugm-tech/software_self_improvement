@@ -162,16 +162,22 @@ def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
 
 def blast_radius(repo: str, base: str = "HEAD") -> dict:
     """
-    Run detect-changes to assess the blast radius of the most recent commit
-    (or uncommitted diff vs `base`). Returned structure has:
+    Run detect-changes to assess blast radius of changes since `base`.
 
+    `base` can be any git ref — its meaning depends on the call site:
+      - Per-fix safety gate (improvement_plan.md):
+          base="HEAD" → compares uncommitted working tree to HEAD.
+          Answers: "is this specific uncommitted change risky to commit?"
+      - Per-round structural check (verify_round.md):
+          base="round-<n-1>" → compares current state to previous round's
+          git tag, measuring cumulative blast of all fixes in this round.
+          Answers: "did this whole round introduce architectural risk?"
+
+    Returned structure:
       - risk_score: 0.0-1.0 (CRG's risk heuristic)
       - changed_functions: list of functions/classes touched
       - test_gaps: changed functions lacking test coverage
       - affected_flows: execution flows impacted
-
-    Used by improvement_plan.md as a safety gate BEFORE committing a fix:
-    if risk_score > 0.7 or the fix touches a hub node, we defer instead.
     """
     data = _run_crg(["detect-changes", "--base", base], repo)
     if "_error" in data:

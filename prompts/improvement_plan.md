@@ -161,7 +161,10 @@ Iterate the `open_issues.json` queue. For each issue:
 2a. (CRG safety gate, if available) Before committing, check blast radius:
 
     python3 scripts/crg_integration.py risky . HEAD 0.7
-    # exits 1 if risk_score >= 0.7 OR fix touches a hub/bridge node
+    # base=HEAD → compares uncommitted working tree to HEAD (pre-commit check)
+    # This is intentionally different from verify_round.md's per-round blast,
+    # which uses a round git tag as base to measure cumulative round changes.
+    # exits 1 if risk_score >= 0.7 (hub/bridge risk captured in CRG risk_score)
 
     IF risky:
       → DO NOT commit this fix

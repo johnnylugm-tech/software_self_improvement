@@ -29,10 +29,23 @@ This catches regressions that dimension tools cannot see:
 # Incremental refresh (seconds — only re-parses changed files)
 code-review-graph update --repo <repo_path>
 
-# Blast radius across all fixes in this round
-# <base> = git tag set at end of previous round (e.g. round-1, round-2)
-# For round 1 (no previous tag): use HEAD~<N> where N = number of commits this round
-python3 scripts/crg_integration.py blast <repo_path> round-<n-1> \
+# Blast radius of ALL fixes made this round (cumulative, not per-fix).
+# Uses a different base than the per-fix `risky` check:
+#   risky . HEAD  →  uncommitted diff vs HEAD        (per-fix, pre-commit)
+#   blast  <repo> <tag>  →  current state vs round tag  (per-round, post-commit)
+
+# Round 1: no previous round tag exists — count commits made this session
+COMMITS_THIS_ROUND=$(git -C <repo_path> log --oneline round-0..HEAD 2>/dev/null \
+  | wc -l || git -C <repo_path> log --oneline | wc -l)
+BASE_REF="HEAD~${COMMITS_THIS_ROUND}"
+
+# Round N>1: previous round tag exists
+# (check with: git tag -l "round-<n-1>" — if output is non-empty, tag exists)
+if git -C <repo_path> tag -l "round-<n-1>" | grep -q .; then
+  BASE_REF="round-<n-1>"
+fi
+
+python3 scripts/crg_integration.py blast <repo_path> "${BASE_REF}" \
 > .sessi-work/round_<n>/crg_blast_radius.json
 ```
 
