@@ -6,10 +6,27 @@ Merges user config over defaults, normalizes weights across enabled dimensions,
 validates ranges, and outputs resolved config as JSON.
 """
 
+import os
 import sys
 import json
 import yaml
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Supported model aliases
+# ---------------------------------------------------------------------------
+CLAUDE_MODELS = {
+    "claude-sonnet-4-5": "claude-sonnet-4-5",   # standard (default)
+    "claude-sonnet-4-6": "claude-sonnet-4-6",   # latest sonnet
+    "claude-opus-4":     "claude-opus-4",        # highest capability
+    "claude":            "claude-sonnet-4-5",   # generic alias → sonnet
+}
+
+GEMINI_MODELS = {
+    "gemini-2.5-flash":  "gemini-2.5-flash",    # fast + cheap (default)
+    "gemini-2.5-pro":    "gemini-2.5-pro",       # higher accuracy
+    "gemini":            "gemini-2.5-flash",    # generic alias → flash
+}
 
 DEFAULT_CONFIG = {
     "version": "1.0",
@@ -166,9 +183,51 @@ def load_config(config_path):
     return user_config
 
 
+def apply_env_overrides(config):
+    """
+    Apply environment variable overrides to llm_routing model selection.
+
+    Supported env vars:
+      HARNESS_GEMINI_MODEL   — override Tier 1/2 model  (e.g. gemini-2.5-pro)
+      HARNESS_CLAUDE_MODEL   — override Tier 3 model    (e.g. claude-opus-4)
+      HARNESS_IMPROVE_MODEL  — override improve model   (defaults to HARNESS_CLAUDE_MODEL)
+
+    These override config.yaml values, which override built-in defaults.
+    Order of precedence: env var > config.yaml > default
+    """
+    routing = config.setdefault("llm_routing", {})
+
+    gemini_env = os.environ.get("HARNESS_GEMINI_MODEL")
+    claude_env = os.environ.get("HARNESS_CLAUDE_MODEL")
+    improve_env = os.environ.get("HARNESS_IMPROVE_MODEL") or claude_env
+
+    if gemini_env:
+        resolved = GEMINI_MODELS.get(gemini_env, gemini_env)
+        routing.setdefault("tier1", {})["model"] = resolved
+        routing.setdefault("tier2", {})["model"] = resolved
+        config["_env_overrides"] = config.get("_env_overrides", [])
+        config["_env_overrides"].append(f"HARNESS_GEMINI_MODEL={gemini_env} → {resolved}")
+
+    if claude_env:
+        resolved = CLAUDE_MODELS.get(claude_env, claude_env)
+        routing.setdefault("tier3", {})["model"] = resolved
+        config["_env_overrides"] = config.get("_env_overrides", [])
+        config["_env_overrides"].append(f"HARNESS_CLAUDE_MODEL={claude_env} → {resolved}")
+
+    if improve_env:
+        resolved = CLAUDE_MODELS.get(improve_env, improve_env)
+        routing.setdefault("improve", {})["model"] = resolved
+        if improve_env != claude_env:
+            config["_env_overrides"] = config.get("_env_overrides", [])
+            config["_env_overrides"].append(f"HARNESS_IMPROVE_MODEL={improve_env} → {resolved}")
+
+    return config
+
+
 def resolve(config_path):
     """
-    Resolve config: load user config, merge with defaults, normalize weights, validate
+    Resolve config: load user config, merge with defaults, normalize weights, validate.
+    Then apply env var overrides (highest precedence).
 
     Args:
         config_path: path to config.yaml
@@ -176,30 +235,30 @@ def resolve(config_path):
     Returns:
         Resolved config dict
     """
-    # Load user config
     user_config = load_config(config_path)
-
-    # Deep merge with defaults
     resolved = deep_merge(DEFAULT_CONFIG, user_config)
-
-    # Normalize weights
     resolved = normalize_weights(resolved)
-
-    # Validate
     resolved = validate_config(resolved)
-
+    resolved = apply_env_overrides(resolved)   # env vars win
     return resolved
 
 
 def main():
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <config.yaml>")
+        print(f"Usage: {sys.argv[0]} <config.yaml>", file=sys.stderr)
+        print(f"\nEnv var model overrides (highest precedence):", file=sys.stderr)
+        print(f"  HARNESS_GEMINI_MODEL   gemini-2.5-flash | gemini-2.5-pro", file=sys.stderr)
+        print(f"  HARNESS_CLAUDE_MODEL   claude-sonnet-4-5 | claude-sonnet-4-6 | claude-opus-4", file=sys.stderr)
+        print(f"  HARNESS_IMPROVE_MODEL  (defaults to HARNESS_CLAUDE_MODEL if unset)", file=sys.stderr)
         sys.exit(1)
 
     config_path = sys.argv[1]
 
     try:
         config = resolve(config_path)
+        if config.get("_env_overrides"):
+            for override in config["_env_overrides"]:
+                print(f"[env override] {override}", file=sys.stderr)
         print(json.dumps(config, indent=2))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

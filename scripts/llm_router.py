@@ -10,8 +10,16 @@ Improve → Claude native (code generation, always)
 Outputs routing decision JSON for evaluate_dimension.md to consume.
 """
 
+import os
 import sys
 import json
+
+# ---------------------------------------------------------------------------
+# Env var model overrides (same vars as config_loader.py)
+# ---------------------------------------------------------------------------
+_GEMINI_MODEL = os.environ.get("HARNESS_GEMINI_MODEL", "gemini-2.5-flash")
+_CLAUDE_MODEL = os.environ.get("HARNESS_CLAUDE_MODEL", "claude-sonnet-4-5")
+_IMPROVE_MODEL = os.environ.get("HARNESS_IMPROVE_MODEL", _CLAUDE_MODEL)
 
 # Routing table: dimension → tier
 TIER_MAP = {
@@ -43,23 +51,29 @@ TIER_MAP = {
 
 TIER_CONFIG = {
     1: {
-        "model": "gemini-2.5-flash",
+        "model": _GEMINI_MODEL,
         "provider": "gemini",
         "rationale": "Tool output is deterministic; LLM role is summarization only",
         "token_budget": {"input": 8000, "output": 800},
     },
     2: {
-        "model": "gemini-2.5-flash",
+        "model": _GEMINI_MODEL,
         "provider": "gemini",
         "rationale": "Light judgment; Gemini Flash sufficient for pattern analysis",
         "token_budget": {"input": 10000, "output": 1200},
     },
     3: {
-        "model": "claude",
+        "model": _CLAUDE_MODEL,
         "provider": "claude_native",
         "rationale": "Deep reasoning / subjective judgment / code understanding required",
         "token_budget": {"input": 20000, "output": 3000},
     },
+}
+
+# Improve step always Claude — separate override available
+IMPROVE_CONFIG = {
+    "model": _IMPROVE_MODEL,
+    "provider": "claude_native",
 }
 
 GEMINI_PROMPT_TEMPLATE = """\
@@ -96,7 +110,7 @@ def route(dimension: str) -> dict:
     """Return routing decision for a dimension."""
     tier = TIER_MAP.get(dimension, 3)  # Default to Claude for unknown dims
     config = TIER_CONFIG[tier]
-    return {
+    result = {
         "dimension": dimension,
         "tier": tier,
         "model": config["model"],
@@ -106,6 +120,12 @@ def route(dimension: str) -> dict:
         "use_gemini": config["provider"] == "gemini",
         "gemini_prompt_template": GEMINI_PROMPT_TEMPLATE if config["provider"] == "gemini" else None,
     }
+    # Surface env overrides for transparency
+    if _GEMINI_MODEL != "gemini-2.5-flash" and config["provider"] == "gemini":
+        result["_env_override"] = f"HARNESS_GEMINI_MODEL={_GEMINI_MODEL}"
+    if _CLAUDE_MODEL != "claude-sonnet-4-5" and config["provider"] == "claude_native":
+        result["_env_override"] = f"HARNESS_CLAUDE_MODEL={_CLAUDE_MODEL}"
+    return result
 
 
 def build_gemini_prompt(dimension: str, tool_output: str, code_sample: str = "") -> str:

@@ -161,24 +161,34 @@ evaluation:
 # Tier 1/2 → Gemini Flash (tool summarization, ~$0.001-0.002/dim)
 # Tier 3   → Claude native (deep reasoning, ~$0.08/dim)
 # Improve  → Claude native always (code generation, non-negotiable)
+#
+# Model options:
+#   Gemini: gemini-2.5-flash (default, fast+cheap) | gemini-2.5-pro (higher accuracy)
+#   Claude: claude-sonnet-4-5 (default) | claude-sonnet-4-6 (latest) | claude-opus-4 (highest capability)
+#
+# Override at runtime via env vars (no config edit needed):
+#   HARNESS_GEMINI_MODEL=gemini-2.5-pro   python3 scripts/config_loader.py config.yaml
+#   HARNESS_CLAUDE_MODEL=claude-opus-4    python3 scripts/config_loader.py config.yaml
+#   HARNESS_IMPROVE_MODEL=claude-opus-4   python3 scripts/config_loader.py config.yaml
 llm_routing:
   enabled: true
   tier1:
     provider: gemini
-    model: gemini-2.5-flash
+    model: gemini-2.5-flash       # override: HARNESS_GEMINI_MODEL
     dimensions: [linting, type_safety, test_coverage,
                  secrets_scanning, license_compliance, mutation_testing]
   tier2:
     provider: gemini
-    model: gemini-2.5-flash
+    model: gemini-2.5-flash       # override: HARNESS_GEMINI_MODEL
     dimensions: [security]
   tier3:
     provider: claude_native
-    model: claude
+    model: claude-sonnet-4-5      # override: HARNESS_CLAUDE_MODEL
     dimensions: [architecture, readability, error_handling,
                  documentation, performance]
   improve:
     provider: claude_native
+    model: claude-sonnet-4-5      # override: HARNESS_IMPROVE_MODEL (or HARNESS_CLAUDE_MODEL)
   token_budget:
     tier1_input_max: 8000
     tier2_input_max: 10000
