@@ -149,7 +149,7 @@ code-review-graph status --repo <repo_path> 2>&1 | grep -q "Nodes: 0" \
 ```
 
 Then, per dimension, use the corresponding **CRG MCP tools** (available once
-`.mcp.json` is loaded — the `code-review-graph` server exposes 28 tools):
+`.mcp.json` is loaded — the `code-review-graph` server exposes 27 tools):
 
 | Dimension | CRG MCP tools to call | What to ask |
 |-----------|----------------------|-------------|
