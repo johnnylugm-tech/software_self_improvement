@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Complete implementation of auto-research-style quality improvement framework with 16 quality dimensions (9 core + 7 extended), anti-bias defenses, and configurable automation. Framework is production-ready and tested for tool availability.
+Complete implementation of auto-research-style quality improvement framework with 17 quality dimensions (12 core + 5 extended), anti-bias defenses, and configurable automation. Framework is production-ready and tested for tool availability.
 
 ## Completed Components
 
@@ -19,8 +19,8 @@ Complete implementation of auto-research-style quality improvement framework wit
   - Step 4: Final report (trajectory with evidence citations)
 
 - [x] **Configuration System**
-  - `config.example.yaml` — 9 standard dimensions (all enabled by default)
-  - `config.advanced.yaml` — All 16 dimensions (7 extended, disabled by default)
+  - `config.example.yaml` — 12 core dimensions (all enabled by default)
+  - `config.advanced.yaml` — All 17 dimensions (12 core + 5 extended disabled by default)
   - Weight normalization across enabled dimensions
   - Per-dimension targets, tools, guardrails
 
@@ -84,9 +84,9 @@ Complete implementation of auto-research-style quality improvement framework wit
 
 - [x] **README.md** — Complete overview
   - Features, quick start, configuration
-  - 9 core dimensions + 7 extended dimensions (table format)
+  - 12 core dimensions + 5 extended dimensions (table format)
   - How it works (4-step execution + per-round loop)
-  - Anti-bias defenses (6 layers)
+  - Anti-bias defenses (7 layers)
   - Installation, usage, output structure
   - Architecture, performance, limitations
 
@@ -112,7 +112,7 @@ Complete implementation of auto-research-style quality improvement framework wit
     5. Accessibility (+2%)
     6. Observability (+2%)
     7. Supply chain security (+3%)
-  - Impact analysis: 60-70% (std) → 75-80% (extended)
+  - Impact analysis: 70-75% (core) → 80%+ (extended)
   - Why can't reach 90%+ (business logic, real UX, zero-days, team preferences)
   - Best practices for enabling incrementally
   - Prerequisite tracking
@@ -141,7 +141,7 @@ Complete implementation of auto-research-style quality improvement framework wit
 6. **Observability** (5%) — Logging/metrics gaps (LOW)
 7. **Supply Chain Security** (6%) — Signature verification (LOW)
 
-**Extended ceiling: 75-80%** (with all 16 dimensions)
+**Extended ceiling: 80%+** (with all 17 dimensions)
 
 **Absolute limitation:** Business logic, real UX, zero-days, team preferences (require humans)
 
@@ -323,8 +323,8 @@ python3 scripts/config_loader.py config.yaml | jq '.dimensions | keys'
 ## Conclusion
 
 The Harness Quality Framework provides a production-ready, deterministic quality improvement system that:
-- ✅ Automates 60-70% of quality improvements with 9 standard dimensions
-- ✅ Reaches 75-80% with 7 extended optional dimensions
+- ✅ Automates 70-75% of quality improvements with 12 core dimensions
+- ✅ Reaches 80%+ with 5 extended optional dimensions
 - ✅ Defends against LLM self-evaluation bias with 6-layer verification
 - ✅ Provides configurable targets, weights, and enabled/disabled dimensions
 - ✅ Generates evidence-based reports with full traceability

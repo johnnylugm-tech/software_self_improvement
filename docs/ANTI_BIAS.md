@@ -168,24 +168,24 @@ DO NOT:
 
 ## Evidence Threshold Analysis
 
-### Standard Configuration (9 dimensions)
+### Standard Configuration (12 core dimensions)
 
-**Assertion:** Framework can reach 60-70% automation through these 6 defenses.
+**Assertion:** Framework can reach 70-75% automation through these 7 defenses.
 
 **Rationale:**
-- Tool ecosystem covers 70-80% of what tools can measure
+- Tool ecosystem covers 75-85% of what tools can measure
 - Evidence requirement prevents ornamental improvements beyond that
 - Per-fix verification ensures no regression
 - Deterministic verification caps unsupported claims
 
-**What it cannot reach:** 75-80%+ without extended dimensions
+**What it cannot reach:** 80%+ without extended dimensions
 - Some quality aspects lack good tools
 - Business logic correctness requires domain knowledge
 - User experience testing requires humans
 
-### Advanced Configuration (16 dimensions)
+### Advanced Configuration (17 dimensions: 12 core + 5 extended)
 
-**With extended dimensions:** Can reach 75-80% ceiling
+**With extended dimensions:** Can reach 80%+ ceiling
 
 **Why extended dims help:**
 - **Mutation testing** (+3-5%) — Reveals test suite weaknesses
@@ -321,4 +321,4 @@ python3 scripts/verify.py result.json round_1 .
 
 ## Conclusion
 
-The 6-layer defense provides strong protection against self-evaluation bias while maintaining practical improvement capability. The framework can automate 60-70% of quality improvements in standard mode, reaching 75-80% with extended dimensions. Beyond that, human judgment and domain expertise remain essential.
+The 7-layer defense provides strong protection against self-evaluation bias while maintaining practical improvement capability. The framework can automate 70-75% of quality improvements with 12 core dimensions, reaching 80%+ with extended dimensions. Beyond that, human judgment and domain expertise remain essential.

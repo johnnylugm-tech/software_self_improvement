@@ -1,12 +1,13 @@
 # Extended Dimensions: Tool Availability Status Report
 
 **Date:** 2026-04-18  
-**Scope:** 7 extended quality dimensions + 13 tools  
+**Scope:** 5 extended quality dimensions + 9 tools  
 **Status:** ✅ ALL TOOLS INSTALLED
 
 ## Summary
 
-All 13 tools required for extended dimensions are installed and ready to use.
+All 9 tools required for extended dimensions are installed and ready to use.
+(Note: mutation_testing and license_compliance are now core dimensions)
 
 **Versions installed:**
 - mutmut 3.3.1, hypothesis 6.141.1, atheris 2.3.0 (Python 3.9 compat), scancode-toolkit 32.4.1

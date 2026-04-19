@@ -1,16 +1,17 @@
 # Harness Quality Framework
 
-Auto-research-style quality improvement for code repositories. Evaluates code across 9 core quality dimensions with optional 7 extended dimensions, identifies gaps, and automatically implements improvements.
+Auto-research-style quality improvement for code repositories. Evaluates code across 12 core quality dimensions with optional 5 extended dimensions, identifies gaps, and automatically implements improvements.
 
 ## Features
 
-✓ **9 Core Quality Dimensions**
+✓ **12 Core Quality Dimensions**
 - Linting, Type Safety, Test Coverage, Security, Performance
 - Architecture, Readability, Error Handling, Documentation
+- Secrets Scanning, Mutation Testing, License Compliance
 
-✓ **7 Extended Dimensions** (optional)
-- Mutation Testing, Property Testing, Fuzzing
-- License Compliance, Accessibility, Observability, Supply Chain Security
+✓ **5 Extended Dimensions** (optional)
+- Property Testing, Fuzzing
+- Accessibility, Observability, Supply Chain Security
 
 ✓ **Anti-Bias Defenses**
 - Tool-first hierarchy: final_score = min(tool_score, llm_score)
@@ -26,7 +27,7 @@ Auto-research-style quality improvement for code repositories. Evaluates code ac
 
 ## Quick Start
 
-### Standard Configuration (9 dimensions)
+### Standard Configuration (12 dimensions)
 ```bash
 # Use default config with all core dimensions
 cp config.example.yaml config.yaml
@@ -35,7 +36,7 @@ cp config.example.yaml config.yaml
 claude-code run quality-improvement --config config.yaml
 ```
 
-### Advanced Configuration (16 dimensions)
+### Advanced Configuration (17 dimensions)
 ```bash
 # Copy advanced config
 cp config.advanced.yaml config.yaml
@@ -53,57 +54,62 @@ claude-code run quality-improvement --config config.yaml
 ## Configuration
 
 ### config.example.yaml
-- 9 standard dimensions (all enabled by default)
+- 12 core dimensions (all enabled by default)
 - Target: 85/100
 - 3 rounds of improvement
 - Early-stop enabled
 
 **Weights** (normalized to 1.0):
 ```
-linting           8%
-type_safety      12%
-test_coverage    15%
-security         12%
-performance      10%
-architecture     10%
-readability       9%
-error_handling   11%
-documentation    13%
+linting             6%
+type_safety        10%
+test_coverage      13%
+security           10%
+performance         7%
+architecture        7%
+readability         6%
+error_handling      9%
+documentation      10%
+secrets_scanning    8%
+mutation_testing    8%
+license_compliance  6%
 ```
 
 ### config.advanced.yaml
-- All 16 dimensions (7 extended disabled by default)
+- All 17 dimensions (12 core + 5 extended)
+- 5 extended disabled by default
 - Same target/rounds/early-stop as standard
 - Adjusted weights when extended dims enabled
 - Installation guide included in file
 
-## Core Dimensions
+## Core Dimensions (12)
 
 | Dimension | Weight | Target | Tools | Purpose |
 |-----------|--------|--------|-------|---------|
-| **linting** | 8% | 95 | eslint, pylint, clippy | Code style consistency |
-| **type_safety** | 12% | 95 | pyright, rustc, javac | Type correctness |
-| **test_coverage** | 15% | 80% | coverage, nyc, tarpaulin | Line/branch coverage |
-| **security** | 12% | 90 | bandit, npm-audit, cargo-audit | Vulnerability detection |
-| **performance** | 10% | 80 | pytest-benchmark, lighthouse | Speed/efficiency |
-| **architecture** | 10% | 80 | sonarqube, codeql | Code organization |
-| **readability** | 9% | 85 | radon, complexity tools | Maintainability |
-| **error_handling** | 11% | 85 | pytest, jest | Exception/error recovery |
-| **documentation** | 13% | 85 | pydocstyle, jsdoc | Code comment coverage |
+| **linting** | 6% | 95 | eslint, pylint, clippy | Code style consistency |
+| **type_safety** | 10% | 95 | pyright, rustc, javac | Type correctness |
+| **test_coverage** | 13% | 80% | coverage, nyc, tarpaulin | Line/branch coverage |
+| **security** | 10% | 90 | bandit, npm-audit, cargo-audit | Vulnerability detection |
+| **performance** | 7% | 80 | pytest-benchmark, lighthouse | Speed/efficiency |
+| **architecture** | 7% | 80 | sonarqube, codeql | Code organization |
+| **readability** | 6% | 85 | radon, complexity tools | Maintainability |
+| **error_handling** | 9% | 85 | pytest, jest | Exception/error recovery |
+| **documentation** | 10% | 85 | pydocstyle, jsdoc | Code comment coverage |
+| **secrets_scanning** | 8% | 100 | detect-secrets, gitleaks | Secret/credential leaks (zero tolerance) |
+| **mutation_testing** | 8% | 70 | mutmut, stryker | Test suite quality validation |
+| **license_compliance** | 6% | 95 | scancode, fossa | License conflict detection |
 
-## Extended Dimensions
+## Extended Dimensions (5)
 
 | Dimension | Tools | Priority | Impact | Prerequisites |
 |-----------|-------|----------|--------|----------------|
-| mutation_testing | mutmut, stryker | **HIGH** | +3-5% | coverage ≥ 70% |
 | property_testing | hypothesis, fast-check | MEDIUM | +3% | linting ✓, type_safety ≥ 90% |
 | fuzzing | atheris, jazzer | MEDIUM | +3% | security ≥ 85% |
-| license_compliance | scancode, fossa | LOW | +1% | — |
 | accessibility | pa11y, axe-core | MEDIUM | +2% | UI code, readability ≥ 80% |
 | observability | syft, grype | LOW | +2% | — |
 | supply_chain_security | cosign | LOW | +3% | security ≥ 85% |
 
-**With extended dims:** Quality ceiling increases from 60-70% (standard tools alone) to 75-80% (full framework).
+**With extended dims:** Quality ceiling increases from 70-75% (core dimensions) to 80%+ (full framework).
 
 See `docs/EXTENDED_DIMENSIONS.md` for detailed guide.
 
@@ -250,7 +256,7 @@ cp config.example.yaml config.yaml
 claude-code run quality-improvement
 ```
 
-### Example 2: Full Framework (16 dimensions)
+### Example 2: Full Framework (17 dimensions)
 ```bash
 cp config.advanced.yaml config.yaml
 ./scripts/install_extended_tools.sh --all
@@ -303,15 +309,15 @@ See `docs/ARCHITECTURE.md` for full system design.
 
 ## Performance
 
-- **Standard config** (9 dims): ~5-15 min per round
-- **Extended config** (16 dims): ~20-40 min per round
-- **Total time** (3 rounds): 15-50 min depending on codebase size
+- **Standard config** (12 core dims): ~10-20 min per round
+- **Extended config** (12 core + 5 extended): ~30-50 min per round
+- **Total time** (3 rounds): 30-150 min depending on codebase size
 
-Recommendation: Start with HIGH priority extended dims (mutation testing), add others as needed.
+Recommendation: Start with core dimensions, add extended dims (property_testing, fuzzing) as needed.
 
 ## Limitations
 
-Framework automates tool-driven improvements across 16 quality dimensions. Cannot replace:
+Framework automates tool-driven improvements across 12 core + 5 extended quality dimensions (17 total). Cannot replace:
 - Business logic correctness (requires domain knowledge)
 - Real user experience testing (requires humans)
 - Zero-day security discovery (requires expert analysis)

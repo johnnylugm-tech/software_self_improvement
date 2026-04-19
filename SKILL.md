@@ -157,7 +157,7 @@ This prevents LLM from inflating scores when tools say otherwise.
 
 ## Dimension System
 
-**9 Core Dimensions (all enabled by default):**
+**12 Core Dimensions (all enabled by default):**
 - linting
 - type_safety
 - test_coverage
@@ -167,12 +167,13 @@ This prevents LLM from inflating scores when tools say otherwise.
 - readability
 - error_handling
 - documentation
-
-**7 Extended Dimensions (optional, disabled by default):**
+- secrets_scanning
 - mutation_testing
+- license_compliance
+
+**5 Extended Dimensions (optional, disabled by default):**
 - property_testing
 - fuzzing
-- license_compliance
 - accessibility
 - observability
 - supply_chain_security

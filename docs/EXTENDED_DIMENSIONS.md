@@ -1,6 +1,7 @@
 # Extended Dimensions Guide
 
-This guide covers the 7 optional extended quality dimensions that increase the automation ceiling from 60-70% to 75-80%.
+This guide covers the 5 optional extended quality dimensions that increase the automation ceiling from 70-75% to 80%+.
+(Note: mutation_testing and license_compliance are now core dimensions.)
 
 ## Quick Reference
 

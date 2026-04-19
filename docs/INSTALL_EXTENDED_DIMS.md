@@ -1,6 +1,7 @@
 # Installation Guide: Extended Dimensions Tools
 
-This guide covers installing tools required for the 7 extended quality dimensions.
+This guide covers installing tools required for the 5 extended quality dimensions.
+(Note: mutation_testing and license_compliance are now core dimensions and do not require installation here.)
 
 ## Quick Start
 
