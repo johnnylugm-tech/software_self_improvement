@@ -147,6 +147,7 @@ def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
     # CRG exposes these via MCP tools — when run standalone we rely on the
     # `detect-changes` / `visualize` / wiki outputs. For pure context
     # extraction in CLI, use what's reliably machine-readable:
+    status = _run_crg(["status"], repo)
     result = {
         "stats_raw": status.get("_raw", ""),
         "note": (

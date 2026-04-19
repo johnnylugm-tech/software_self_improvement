@@ -30,8 +30,10 @@ This catches regressions that dimension tools cannot see:
 code-review-graph update --repo <repo_path>
 
 # Blast radius across all fixes in this round
+# <base> = git tag set at end of previous round (e.g. round-1, round-2)
+# For round 1 (no previous tag): use HEAD~<N> where N = number of commits this round
 python3 scripts/crg_integration.py blast <repo_path> round-<n-1> \
-  > .sessi-work/round_<n>/crg_blast_radius.json
+> .sessi-work/round_<n>/crg_blast_radius.json
 ```
 
 Two classes of regression to escalate:

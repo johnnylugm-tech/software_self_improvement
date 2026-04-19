@@ -1,8 +1,8 @@
 # Implementation Status: Harness Quality Framework
 
-**Date:** 2026-04-18  
+**Date:** 2026-04-19  
 **Status:** ✅ COMPLETE - Framework ready for deployment  
-**Commits:** 1 (initial framework setup)
+**Commits:** 8+ (see git log for full history)
 
 ## Executive Summary
 
@@ -270,8 +270,8 @@ Edit `config.yaml`:
 ## Known Limitations
 
 ### 1. Automation Ceiling
-- **Standard:** 60-70% (tools alone can measure)
-- **Extended:** 75-80% (with all 7 optional dimensions)
+- **Standard (12 core dims):** 70-75% (tools alone can measure)
+- **Extended (17 dims):** 80%+ (with all 5 optional dimensions)
 - **Cannot reach 90%+:** Business logic, real UX, zero-days, team preferences require human judgment
 
 ### 2. Tool Availability
@@ -327,7 +327,7 @@ python3 scripts/config_loader.py config.yaml | jq '.dimensions | keys'
 ## References
 
 - Framework design: Based on Karpathy's autoresearch pattern (`github.com/karpathy/autoresearch`)
-- Quality model: Extended from Harness Engineering framework (base model: 9 dimensions)
+- Quality model: Extended from Harness Engineering framework (base model: 12 core dimensions)
 - Implementation: Claude Code skill with Python orchestration + LLM evaluation steps
 - Anti-bias: Research on LLM self-evaluation bias in ML systems
 

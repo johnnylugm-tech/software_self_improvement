@@ -12,6 +12,14 @@ critical/high issues — those MUST be fixed before the round is considered comp
 ## Step 1: Load Open Issues + Verified Scores
 
 ```bash
+# Saturation check — run FIRST (implements SKILL.md Step 3e plateau guard):
+python3 scripts/issue_tracker.py saturation \
+  .sessi-work/issue_registry.json <current_round>
+# exit 0 → not saturated, proceed
+# exit 1 → saturated (no new issues for 3 consecutive rounds)
+#   → if ALSO no score improvement from last round: STOP, emit deferred_fixes.md
+#   → if score improved last round: continue (saturation may lift next round)
+
 # Verified scores (for meets_target + failing_dimensions context)
 python3 scripts/score.py .sessi-work/round_<n> config.json \
   .sessi-work/issue_registry.json > .sessi-work/round_<n>/final_score.json

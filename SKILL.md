@@ -104,7 +104,14 @@ ELSE:
     → proceed to 3f
 ```
 
-Saturation detection: `python3 scripts/issue_tracker.py saturation .sessi-work/issue_registry.json <round>` returns true when no NEW issues were recorded for N consecutive rounds.
+Saturation detection — **Claude must call this explicitly**:
+```bash
+python3 scripts/issue_tracker.py saturation \
+  .sessi-work/issue_registry.json <current_round>
+# exits 0 (not saturated) or 1 (saturated — no new issues for 3 consecutive rounds)
+```
+Returns true when no NEW issues were recorded for N consecutive rounds (default: 3).
+If saturated AND no score improvement from the previous round → stop and emit deferred_fixes.md.
 
 **3f. Improve (Issue-Driven)**
 
@@ -361,5 +368,5 @@ silently; only token efficiency and structural verification are lost.
 ## References
 
 - Framework: Based on Karpathy's autoresearch pattern
-- Quality model: Harness Engineering 9-dimension weighted scoring
+- Quality model: Harness Engineering 12-dimension weighted scoring
 - Implementation: Claude Code skill with Python orchestration + LLM evaluation steps

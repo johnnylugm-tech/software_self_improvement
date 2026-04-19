@@ -5,12 +5,14 @@ This guide covers the 5 optional extended quality dimensions that increase the a
 
 ## Quick Reference
 
+> **Note:** `mutation_testing` and `license_compliance` are **core dimensions**
+> (enabled by default in `config.example.yaml`), not extended. The 5 extended
+> dimensions below are disabled by default and require separate tool installation.
+
 | Dimension | Priority | Impact | Tools | Prerequisites | Details |
 |-----------|----------|--------|-------|----------------|---------|
-| **mutation_testing** | HIGH | +3-5% | mutmut, stryker | coverage ≥70% | Test suite quality |
 | **property_testing** | MEDIUM | +3% | hypothesis, fast-check | linting ✓, type_safety ≥90% | Edge case generation |
 | **fuzzing** | MEDIUM | +3% | atheris, jazzer | security ≥85%, error_handling ≥80% | Crash discovery |
-| **license_compliance** | LOW | +1% | scancode, fossa | — | License conflicts |
 | **accessibility** | MEDIUM | +2% | pa11y, axe-core | readability ≥80% (UI only) | WCAG violations |
 | **observability** | LOW | +2% | syft, grype | — | Logging/metrics gaps |
 | **supply_chain_security** | LOW | +3% | cosign | security ≥85% | Signature verification |
@@ -423,9 +425,10 @@ supply_chain_security:
 
 ### Score Ceiling Without Extended Dims
 
-With 9 standard dimensions alone:
-- Linting, type safety, test coverage, security, performance, architecture, readability, error handling, documentation
-- **Realistic ceiling: 60-70%** (what tools can directly measure)
+With 12 core dimensions alone:
+- Linting, type safety, test coverage, security, performance, architecture, readability,
+  error handling, documentation, secrets scanning, mutation testing, license compliance
+- **Realistic ceiling: 70-75%** (what tools can directly measure)
 
 **Why?** Standard tools measure:
 - Code style consistency ✓

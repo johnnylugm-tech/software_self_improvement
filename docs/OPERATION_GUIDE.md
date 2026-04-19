@@ -173,11 +173,12 @@ python3 scripts/issue_tracker.py summary .sessi-work/issue_registry.json
 ### Phase 3: Score (CLI, ~30 sec)
 
 ```bash
+# score.py outputs JSON to stdout; redirect captures it to file
 python3 scripts/score.py \
   .sessi-work/round_<n> \
   config.json \
   .sessi-work/issue_registry.json \
-  > .sessi-work/round_<n>/final_score.json
+> .sessi-work/round_<n>/final_score.json
 ```
 
 Output includes:

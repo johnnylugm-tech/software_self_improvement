@@ -2,12 +2,16 @@
 
 **Date:** 2026-04-18  
 **Scope:** 5 extended quality dimensions + 9 tools  
-**Status:** ✅ ALL TOOLS INSTALLED
+**Status:** ⚠️ 8/9 tools installed — jazzer (Java fuzzing) requires Java 11+ (optional)
 
 ## Summary
 
-All 9 tools required for extended dimensions are installed and ready to use.
-(Note: mutation_testing and license_compliance are now core dimensions)
+8 of 9 tools required for extended dimensions are installed and ready to use.
+(Note: mutation_testing and license_compliance are now core dimensions — not extended)
+
+**jazzer** (Java fuzzing) is the one missing tool — it requires Java 11+.
+All other fuzzing capability is available via `atheris` (Python). `jazzer` is
+optional: skip it if your codebase is not Java/JVM-based.
 
 **Versions installed:**
 - mutmut 3.3.1, hypothesis 6.141.1, atheris 2.3.0 (Python 3.9 compat), scancode-toolkit 32.4.1
@@ -22,7 +26,7 @@ All 9 tools required for extended dimensions are installed and ready to use.
 - mutation_testing and license_compliance are NOW CORE (not extended)
 
 ### ✓ READY (5 Extended Dimensions)
-- All 9 extended tools installed
+- 8/9 extended tools installed (jazzer missing — optional for non-Java repos)
 - Enable each dimension by setting `enabled: true` in `config.advanced.yaml`
 
 ## Detailed Status by Dimension
@@ -140,20 +144,16 @@ See `docs/INSTALL_EXTENDED_DIMS.md` for per-tool installation steps.
 
 ## Configuration Changes Required
 
-After installing tools, enable in `config.advanced.yaml`:
+After installing tools, enable **extended** dimensions in `config.advanced.yaml`
+(mutation_testing and license_compliance are already enabled in `config.example.yaml`
+as core dimensions — no action needed for those):
 
 ```yaml
-# Change from 'enabled: false' to 'enabled: true'
-mutation_testing:
-  enabled: true
-
+# config.advanced.yaml — change from 'enabled: false' to 'enabled: true'
 property_testing:
   enabled: true
 
 fuzzing:
-  enabled: true
-
-license_compliance:
   enabled: true
 
 accessibility:
@@ -193,8 +193,8 @@ brew list --versions syft grype cosign
 
 Adding extended dimensions increases analysis time:
 
-- **Standard (9 dims):** ~5-10 min per round
-- **Extended (16 dims):** ~15-25 min per round
+- **Standard (12 core dims):** ~5-10 min per round
+- **Extended (17 dims):** ~15-25 min per round
 - **All enabled:** ~30-40 min per round (full analysis)
 
 Recommendation: Start with HIGH priority (mutation_testing) then add others as needed.
@@ -203,7 +203,7 @@ Recommendation: Start with HIGH priority (mutation_testing) then add others as n
 
 Extended dimensions fit cleanly into existing framework:
 
-✓ Weight normalization auto-adjusts across 16 vs 9  
+✓ Weight normalization auto-adjusts across 17 vs 12  
 ✓ Prerequisite checks prevent running advanced dims without foundations  
 ✓ Early-stop still works across all dimensions  
 ✓ Per-dim evaluation and verification unchanged  
