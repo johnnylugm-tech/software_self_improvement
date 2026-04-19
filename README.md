@@ -165,6 +165,50 @@ See `docs/EXTENDED_DIMENSIONS.md` for detailed guide.
 
 See `docs/ANTI_BIAS.md` for detailed analysis and tuning.
 
+## Code Review Graph Integration (Optional)
+
+The framework integrates with **Code Review Graph (CRG)** for enhanced architecture analysis, reducing Tier 3 evaluation token cost by 30-50% while improving accuracy.
+
+### What CRG Adds
+
+**Three integration points:**
+
+1. **Tier 3 Evaluation** — Before reading source code, query CRG MCP tools to get:
+   - Hub nodes (architectural hotspots)
+   - Bridge nodes (chokepoints)
+   - Large functions (readability issues)
+   - Knowledge gaps
+   - Instead of: full codebase read → **Result: -30-50% tokens, better accuracy**
+
+2. **Pre-Commit Safety Gate** — Before applying a fix:
+   - Check if change touches hub/bridge nodes
+   - Check risk_score ≥ 0.7
+   - **If risky: defer instead of commit** (prevents architectural regressions)
+
+3. **Post-Round Structural Verification** — After each round:
+   - Detect architectural drift
+   - Auto-register test coverage gaps
+   - Trigger revert protocol if drift > 0.4
+
+### Installation (One-Time)
+
+```bash
+# 1. Install CRG
+code-review-graph install --platform claude-code --repo .
+code-review-graph build --repo .
+
+# 2. Restart Claude Desktop to load MCP tools
+# Verify in Claude Code: should see 27 code-review-graph MCP tools available
+
+# Framework automatically uses CRG if available; gracefully degrades without it
+```
+
+**Framework behavior:**
+- ✓ **With CRG:** Token-efficient Tier 3 eval + architectural safety
+- ✓ **Without CRG:** Works fine (just higher token cost for Tier 3)
+
+See `docs/OPERATION_GUIDE.md` for complete CRG workflow with CLI commands.
+
 ## Installation
 
 ### Prerequisites
