@@ -185,7 +185,7 @@ See `docs/ANTI_BIAS.md` for detailed analysis and tuning.
 
 ## Code Review Graph Integration (Optional)
 
-The framework integrates with **Code Review Graph (CRG)** — 22 of 27 MCP tools utilized, 6 of them **deeply integrated** via `scripts/crg_analysis.py` — reducing Tier 3 evaluation token cost by 30–50% while surfacing structural issues that dimension tools cannot see.
+The framework integrates with **Code Review Graph (CRG)** — 24 of 27 MCP tools utilized, 6 of them **deeply integrated** via `scripts/crg_analysis.py` — reducing Tier 3 evaluation token cost by 30–50% while surfacing structural issues that dimension tools cannot see.
 
 ### What CRG Adds
 

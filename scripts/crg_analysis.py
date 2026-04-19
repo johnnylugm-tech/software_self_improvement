@@ -231,8 +231,60 @@ def compute_hub_risk_map(hubs: list, knowledge_gaps: list) -> dict:
 
 # =============== Top-Level Orchestration ===============
 
+def _validate_recon(recon: dict) -> list:
+    """
+    Return a list of warning strings when key CRG fields are absent.
+
+    These fields are populated by CRG MCP tools during reconnaissance.
+    If they are missing it means CRG tools were unavailable — metrics
+    will return safe defaults (no false negatives, no errors) but the
+    caller should know the data is incomplete.
+    """
+    warnings = []
+    expected = {
+        "risk_score":             "get_minimal_context",
+        "high_risk_hubs":         "get_hub_nodes",
+        "low_cohesion_communities": "list_communities",
+        "untested_hotspots":      "get_knowledge_gaps",
+        "dead_code":              "refactor_tool(dead_code)",
+        "flows":                  "list_flows / get_affected_flows",
+        "suggested_questions":    "get_suggested_questions",
+    }
+    for field, source_tool in expected.items():
+        if recon.get(field) is None:
+            warnings.append(
+                f"  missing '{field}' (populated by {source_tool}) — "
+                "CRG MCP tools may have been unavailable during reconnaissance"
+            )
+    return warnings
+
+
 def compute_metrics(recon: dict) -> dict:
-    """Run all metric computations. Single call for full analysis."""
+    """
+    Run all metric computations. Single call for full analysis.
+
+    Graceful degradation: if CRG MCP tools were unavailable during
+    reconnaissance, key fields will be absent. All sub-computations
+    handle missing/empty data with safe defaults:
+      - risk_score=None  → eval_depth='standard' (not fast, not deep)
+      - empty communities → cohesion_score=100 (no unhealthy signal)
+      - empty flows       → flow_coverage=100
+      - empty dead_code   → no escalation
+      - empty hubs        → no hub-risk issues
+
+    Warnings are emitted to stderr (and included in output) so the
+    caller can tell the difference between "no issues found" and
+    "data not available".
+    """
+    warnings = _validate_recon(recon)
+    if warnings:
+        print(
+            "[crg_analysis] WARNING: reconnaissance data incomplete.\n"
+            + "\n".join(warnings)
+            + "\n  → safe defaults applied; metrics reflect NO CRG signal.",
+            file=sys.stderr,
+        )
+
     risk_score = recon.get("risk_score")
     stats = recon.get("graph_stats", {})
     total_nodes = stats.get("nodes", 0) or 0
@@ -255,6 +307,7 @@ def compute_metrics(recon: dict) -> dict:
     return {
         "risk_score": risk_score,
         "eval_depth": compute_eval_depth(risk_score),
+        "data_warnings": warnings,        # empty list = full CRG data present
         "thresholds": {
             "risk_deep": RISK_DEEP_THRESHOLD,
             "risk_fast": RISK_FAST_THRESHOLD,

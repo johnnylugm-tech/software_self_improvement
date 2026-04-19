@@ -301,7 +301,7 @@ See `docs/ANTI_BIAS.md` for detailed analysis.
 ## Code Review Graph Integration
 
 When [Code Review Graph](https://github.com/code-review-graph) (CRG) is installed,
-**four integration points** activate automatically (22 of 27 MCP tools utilized,
+**four integration points** activate automatically (24 of 27 MCP tools utilized,
 6 with deep-integration formulas — see `crg_analysis.py`):
 
 1. **Structural reconnaissance (crg_reconnaissance.md — Step 2.5):** runs once
@@ -348,6 +348,7 @@ When [Code Review Graph](https://github.com/code-review-graph) (CRG) is installe
 | `get_flow` | performance + error_handling (drill-down) |
 | `get_affected_flows` | error_handling eval |
 | `semantic_search_nodes` | error_handling eval |
+| `get_architecture_overview` | architecture eval (layering + module map) |
 | `generate_wiki` / `get_wiki_page` | documentation eval |
 | `get_docs_section` | documentation eval (targeted) |
 | `query_graph_tool` | Tier 3 (tests_for, callers_of, fan-in/out) |

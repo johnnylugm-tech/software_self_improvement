@@ -19,7 +19,7 @@ Surface integration:  LLM reads CRG output → LLM decides → score
 Deep integration:     CRG output → formula/threshold → score/action
 ```
 
-Out of 22 MCP tools utilized by this framework, **6 have deep-integration
+Out of 24 MCP tools utilized by this framework, **6 have deep-integration
 formulas** in `scripts/crg_analysis.py`. The rest provide structural context
 that replaces blind code reading (still valuable, not "deep" by this definition).
 
@@ -239,9 +239,9 @@ python3 scripts/crg_analysis.py thresholds
 | Tier 3 evaluation | `find_large_functions`, `list_flows`, `get_flow`, `get_affected_flows`, `semantic_search_nodes`, `get_architecture_overview`, `generate_wiki`, `get_wiki_page`, `get_docs_section`, `query_graph_tool`, `traverse_graph_tool` | 11 |
 | Fix safety gates | `get_review_context`, `get_impact_radius` | 2 |
 | Structural verification | `detect_changes` (via `crg_integration.py blast`) | 1 (shared) |
-| **Total utilized** | | **22 / 27** |
+| **Total utilized** | | **24 / 27** |
 
-Of the 22 utilized, **6 are deeply integrated** (drive deterministic decisions
+Of the 24 utilized, **6 are deeply integrated** (drive deterministic decisions
 via `crg_analysis.py`). The remaining 16 provide structural context that
 replaces blind code reading — still valuable, but interpreted by LLM.
 
