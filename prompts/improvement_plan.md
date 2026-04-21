@@ -3,6 +3,25 @@
 Plan and execute fixes for **open issues in the registry**, not just failing dimensions.
 Always uses **Claude native** — code modification requires full reasoning capability.
 
+---
+
+## Execution Contract (強制，每次執行前確認)
+
+> **這是行為紅線宣告，不可跳過。違反任一項，本步驟結果視為無效。**
+>
+> ❌ **禁止行為：**
+> - 未重新執行工具就將 issue 標記為 `fixed`（`commit_sha` 必填）
+> - 對 `TOOL_VERIFIABLE` 維度呼叫 `mark_fixed()` 時不提供 `tool_rerun_path`
+> - 宣稱「已修復」但工具輸出仍顯示相同問題
+> - 跳過 Step 2a CRG blast-radius gate 直接提交（risk_score ≥ 0.7 時）
+> - 每個 commit 修復超過 1 個 issue（破壞 issue→commit 可追溯性）
+>
+> ✅ **每個 `fix` 記錄必須滿足：**
+> - `commit_sha`: 實際 git commit SHA（不得為空字串）
+> - `tool_rerun_path`: 工具重新執行的輸出路徑（tool-verifiable 維度必填）
+> - `files_changed`: 實際修改的檔案列表（至少 1 個）
+> - 若 blast-radius 超標 → `defer`，不得強行 commit
+
 **Shift from previous version:** the priority queue is the open-issue list, not a
 ranked dimension list. A dimension that hits its score target can still have open
 critical/high issues — those MUST be fixed before the round is considered complete.

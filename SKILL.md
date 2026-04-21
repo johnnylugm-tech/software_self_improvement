@@ -284,17 +284,25 @@ python3 scripts/report_gen.py <repo_path> .sessi-work .sessi-work/issue_registry
 - `prompts/verify_round.md` — Claude follows this for cross-dimension regression checks
 - `prompts/final_report.md` — Claude follows this to produce the final report
 
-## Anti-Bias Defenses
+## Anti-Bias Defenses (12 Layers)
 
-1. **Tool-first hierarchy:** Claims capped by tool scores
+Defends against: laziness (偷懶), shortcuts (走捷徑), hallucination (幻覺/說謊), self-congratulation (自我感覺良好).
+
+**Original 7 layers:**
+1. **Tool-first hierarchy:** `final_score = min(tool_score, llm_score)`
 2. **Evidence requirement:** Every finding needs tool output or code diff
 3. **Per-fix re-verification:** Revert if tool shows no improvement
-4. **Deterministic verification:** quantitative comparison pre/post
-5. **Regression detection:** surface changes that hurt dimensions
+4. **Deterministic verification (verify.py):** quantitative comparison pre/post, cap unsupported gains
+5. **Regression detection:** surface changes that hurt other dimensions
 6. **Path heuristics:** prevent undetected regressions
-7. **Structural drift detection (CRG):** catches architectural regressions
-   that dimension tools cannot see — new hub nodes, expanded test gaps,
-   risk-score jumps across rounds
+7. **Structural drift detection (CRG):** architectural regression via risk-score + hub graph
+
+**New 5 layers (v3.1):**
+8. **Execution Contract:** behavioral red lines declared at prompt start — skip = invalid output
+9. **Devil's Advocate:** Gemini Flash challenges Tier 3 findings before score write; deterministic penalty rules
+10. **High-Score Confirmation Gate:** `llm_score ≥ 85` requires negative space proof + CRG evidence + tool alignment; else capped at 80
+11. **Fix Verification Enforcement Gate:** `mark_fixed()` raises `ValueError` without `commit_sha` + `tool_rerun_path` for tool-verifiable dims
+12. **Self-Consistency Uncertainty Gate:** `verify.py` flags Δ > 15 with < 3 evidence pieces, tool/LLM divergence > 20 pts, high scores bypassing Step 2c
 
 See `docs/ANTI_BIAS.md` for detailed analysis.
 

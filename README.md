@@ -172,14 +172,23 @@ See `docs/EXTENDED_DIMENSIONS.md` for detailed guide.
 - Per-fix: tool verification + revert on regression
 - One commit per fix
 
-### Anti-Bias Defenses
+### Anti-Bias Defenses (12 Layers)
 
+**Original 7 layers:**
 1. **Tool-first hierarchy** — LLM claims capped by tool scores
 2. **Evidence requirement** — All findings need tool output or git diff
 3. **Per-fix re-verification** — Revert if tool shows no improvement
 4. **Deterministic verification** — Quantitative pre/post comparison
 5. **Regression detection** — Surface changes that hurt other dims
 6. **Path heuristics** — Prevent undetected regressions
+7. **CRG structural drift** — Architectural regression via hub/risk graph
+
+**New layers (v3.1 — counters: laziness, shortcuts, hallucination, self-congratulation):**
+8. **Execution Contract** — behavioral red lines at prompt start
+9. **Devil's Advocate** — Gemini Flash challenges Tier 3 before score write
+10. **High-Score Gate** — `llm_score ≥ 85` requires negative space proof or caps at 80
+11. **Fix Verification Gate** — `mark_fixed()` enforces `commit_sha` + `tool_rerun_path`
+12. **Self-Consistency Gate** — flags Δ > 15 with insufficient evidence, tool/LLM divergence
 
 See `docs/ANTI_BIAS.md` for detailed analysis and tuning.
 
@@ -476,7 +485,7 @@ In Claude Code: `"Run quality improvement — score gate is 90"`
 - **docs/OPERATION_GUIDE.md** — Complete workflow with CLI + CRG MCP tools
 - **docs/INSTALL_EXTENDED_DIMS.md** — Tool installation guide
 - **docs/EXTENDED_DIMENSIONS.md** — Detailed guide for 5 extended dims
-- **docs/ANTI_BIAS.md** — 7-layer bias defense analysis
+- **docs/ANTI_BIAS.md** — 12-layer bias defense analysis
 - **EXTENDED_DIMS_STATUS.md** — Tool availability & prerequisites
 
 ## Performance

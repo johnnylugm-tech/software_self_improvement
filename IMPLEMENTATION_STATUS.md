@@ -89,12 +89,12 @@ Complete implementation of auto-research-style quality improvement framework wit
   - 12 core dimensions + 5 extended dimensions (table format)
   - How it works (5-step execution + per-round loop)
   - CRG integration: 4 integration points + deep-integration layer (scripts/crg_analysis.py), 24 of 27 MCP tools, reconnaissance phase, cohesion+flow sub-scores fold into score.py
-  - Anti-bias defenses (7 layers)
+  - Anti-bias defenses (12 layers — v3.1 adds Execution Contract, DA, High-Score Gate, Fix Verification Gate, Self-Consistency Gate)
   - Installation, usage, output structure
   - Architecture, performance, limitations
 
 - [x] **docs/ANTI_BIAS.md** — Bias defense analysis
-  - 7-layer defense explained with examples
+  - 12-layer defense explained with examples (layers 8–12 added in v3.1)
   - Tool-first hierarchy
   - Evidence requirement
   - Per-fix re-verification
@@ -149,8 +149,9 @@ Complete implementation of auto-research-style quality improvement framework wit
 
 **Absolute limitation:** Business logic, real UX, zero-days, team preferences (require humans)
 
-## Anti-Bias Defenses (7 Layers)
+## Anti-Bias Defenses (12 Layers)
 
+**Original 7 (v1):**
 1. **Tool-First Hierarchy** — `final_score = min(tool_score, llm_score)`
 2. **Evidence Requirement** — All findings need tool output or git diff
 3. **Per-Fix Re-Verification** — Revert if tool shows no improvement
@@ -159,7 +160,14 @@ Complete implementation of auto-research-style quality improvement framework wit
 6. **Path Heuristics** — Never weaken tests, broaden exceptions, add ignore comments
 7. **Structural Drift Detection (CRG)** — Architectural regression detection via knowledge graph
 
-**Result:** Prevents LLM self-evaluation bias while maintaining practical improvements.
+**New 5 (v3.1) — targeting: laziness, shortcuts, hallucination, self-congratulation:**
+8. **Execution Contract** — Behavioral red lines declared at prompt start; skip = result invalid
+9. **Devil's Advocate** — Gemini Flash adversarially challenges Tier 3 before score write
+10. **High-Score Confirmation Gate** — `llm_score ≥ 85` requires 3-part proof or forced cap to 80
+11. **Fix Verification Enforcement Gate** — `mark_fixed()` requires `commit_sha` + `tool_rerun_path`
+12. **Self-Consistency Uncertainty Gate** — `verify.py` flags Δ > 15 / divergence / bypass of Step 2c
+
+**Result:** Prevents the four core AI agent misbehaviors while maintaining practical improvements.
 
 ## File Structure
 
@@ -172,7 +180,7 @@ harness-quality-framework/
 ├── EXTENDED_DIMS_STATUS.md              # Tool availability status
 ├── IMPLEMENTATION_STATUS.md             # This file
 ├── docs/
-│   ├── ANTI_BIAS.md                     # 7-layer bias defense analysis
+│   ├── ANTI_BIAS.md                     # 12-layer bias defense analysis
 │   ├── EXTENDED_DIMENSIONS.md           # 5 extended dimension guide
 │   ├── INSTALL_EXTENDED_DIMS.md         # Tool installation guide
 │   └── OPERATION_GUIDE.md               # Complete end-to-end workflow
@@ -336,7 +344,7 @@ python3 scripts/config_loader.py config.yaml | jq '.dimensions | keys'
 The Harness Quality Framework provides a production-ready, deterministic quality improvement system that:
 - ✅ Automates 70-75% of quality improvements with 12 core dimensions
 - ✅ Reaches 80%+ with 5 extended optional dimensions
-- ✅ Defends against LLM self-evaluation bias with 7-layer verification
+- ✅ Defends against LLM self-evaluation bias with 12-layer verification (v3.1)
 - ✅ Provides configurable targets, weights, and enabled/disabled dimensions
 - ✅ Generates evidence-based reports with full traceability
 - ✅ Integrates with standard DevOps tooling (git, pytest, eslint, etc.)
