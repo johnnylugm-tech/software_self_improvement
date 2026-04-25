@@ -19,7 +19,6 @@ import sys
 import json
 import shutil
 import subprocess
-from pathlib import Path
 
 CRG_BIN = "code-review-graph"
 CRG_TIMEOUT = 60
@@ -84,8 +83,10 @@ def ensure_ready(repo: str, build_timeout: int = 300) -> dict:
 
     if node_count == 0:
         # Graph not built — auto-build
-        print("[CRG] Graph not found. Building now (this may take 30–120s)…",
-              file=sys.stderr)
+        print(
+            "[CRG] Graph not found. Building now (this may take 30–120s)…",
+            file=sys.stderr,
+        )
         try:
             subprocess.run(
                 [CRG_BIN, "build", "--repo", repo],
@@ -114,7 +115,7 @@ def ensure_ready(repo: str, build_timeout: int = 300) -> dict:
     return {
         "available": True,
         "node_count": node_count,
-        "action": action,        # "auto_built" | "already_built"
+        "action": action,  # "auto_built" | "already_built"
         "repo": repo,
     }
 
@@ -135,7 +136,9 @@ def context(repo: str, max_hubs: int = 10, max_large_funcs: int = 15) -> dict:
     accuracy for architecture/readability/performance dimensions.
     """
     if not _crg_available():
-        return {"error": "code-review-graph not installed; falling back to full code read"}
+        return {
+            "error": "code-review-graph not installed; falling back to full code read"
+        }
 
     # Auto-ensure graph is ready (build if empty)
     if _graph_node_count(repo) == 0:
@@ -252,12 +255,17 @@ def main():
         threshold = float(sys.argv[4]) if len(sys.argv) > 4 else 0.7
         radius = blast_radius(repo, base)
         risky = is_risky(radius, threshold)
-        print(json.dumps({
-            "risky": risky,
-            "risk_score": radius.get("risk_score"),
-            "threshold": threshold,
-            "reason": radius.get("summary", ""),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "risky": risky,
+                    "risk_score": radius.get("risk_score"),
+                    "threshold": threshold,
+                    "reason": radius.get("summary", ""),
+                },
+                indent=2,
+            )
+        )
         sys.exit(1 if risky else 0)
 
     elif cmd == "update":

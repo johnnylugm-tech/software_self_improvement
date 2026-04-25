@@ -16,24 +16,24 @@ from pathlib import Path
 # Supported model aliases
 # ---------------------------------------------------------------------------
 CLAUDE_MODELS = {
-    "claude-sonnet-4-5": "claude-sonnet-4-5",   # standard (default)
-    "claude-sonnet-4-6": "claude-sonnet-4-6",   # latest sonnet
-    "claude-opus-4":     "claude-opus-4",        # highest capability
-    "claude":            "claude-sonnet-4-5",   # generic alias → sonnet
+    "claude-sonnet-4-5": "claude-sonnet-4-5",  # standard (default)
+    "claude-sonnet-4-6": "claude-sonnet-4-6",  # latest sonnet
+    "claude-opus-4": "claude-opus-4",  # highest capability
+    "claude": "claude-sonnet-4-5",  # generic alias → sonnet
 }
 
 GEMINI_MODELS = {
-    "gemini-2.5-flash":  "gemini-2.5-flash",    # fast + cheap (default)
-    "gemini-2.5-pro":    "gemini-2.5-pro",       # higher accuracy
-    "gemini":            "gemini-2.5-flash",    # generic alias → flash
+    "gemini-2.5-flash": "gemini-2.5-flash",  # fast + cheap (default)
+    "gemini-2.5-pro": "gemini-2.5-pro",  # higher accuracy
+    "gemini": "gemini-2.5-flash",  # generic alias → flash
 }
 
 DEFAULT_CONFIG = {
     "version": "1.0",
     "quality": {
-        "score_gate": 85,        # Minimum overall score — not a completion goal
+        "score_gate": 85,  # Minimum overall score — not a completion goal
         "max_rounds": 3,
-        "early_stop": True,      # Issue-driven: score_gate AND zero open critical/high
+        "early_stop": True,  # Issue-driven: score_gate AND zero open critical/high
         "saturation_rounds": 3,  # Plateau detection: N rounds with no new issues
         "commit_per_fix": True,
     },
@@ -51,14 +51,40 @@ DEFAULT_CONFIG = {
         "readability": {"enabled": True, "weight": 0.06, "target": 85, "tools": []},
         "error_handling": {"enabled": True, "weight": 0.09, "target": 85, "tools": []},
         "documentation": {"enabled": True, "weight": 0.10, "target": 85, "tools": []},
-        "secrets_scanning": {"enabled": True, "weight": 0.08, "target": 100, "tools": []},
-        "mutation_testing": {"enabled": True, "weight": 0.08, "target": 70, "tools": [], "time_budget_seconds": 300},
-        "license_compliance": {"enabled": True, "weight": 0.06, "target": 95, "tools": []},
-        "property_testing": {"enabled": False, "weight": 0.07, "target": 75, "tools": []},
+        "secrets_scanning": {
+            "enabled": True,
+            "weight": 0.08,
+            "target": 100,
+            "tools": [],
+        },
+        "mutation_testing": {
+            "enabled": True,
+            "weight": 0.08,
+            "target": 70,
+            "tools": [],
+            "time_budget_seconds": 300,
+        },
+        "license_compliance": {
+            "enabled": True,
+            "weight": 0.06,
+            "target": 95,
+            "tools": [],
+        },
+        "property_testing": {
+            "enabled": False,
+            "weight": 0.07,
+            "target": 75,
+            "tools": [],
+        },
         "fuzzing": {"enabled": False, "weight": 0.08, "target": 70, "tools": []},
         "accessibility": {"enabled": False, "weight": 0.06, "target": 85, "tools": []},
         "observability": {"enabled": False, "weight": 0.05, "target": 80, "tools": []},
-        "supply_chain_security": {"enabled": False, "weight": 0.06, "target": 80, "tools": []},
+        "supply_chain_security": {
+            "enabled": False,
+            "weight": 0.06,
+            "target": 80,
+            "tools": [],
+        },
     },
     "scoring": {
         "reconcile_method": "min",
@@ -79,8 +105,14 @@ DEFAULT_CONFIG = {
         "tier1": {
             "provider": "gemini",
             "model": "gemini-2.5-flash",
-            "dimensions": ["linting", "type_safety", "test_coverage",
-                           "secrets_scanning", "license_compliance", "mutation_testing"],
+            "dimensions": [
+                "linting",
+                "type_safety",
+                "test_coverage",
+                "secrets_scanning",
+                "license_compliance",
+                "mutation_testing",
+            ],
         },
         "tier2": {
             "provider": "gemini",
@@ -90,8 +122,13 @@ DEFAULT_CONFIG = {
         "tier3": {
             "provider": "claude_native",
             "model": "claude",
-            "dimensions": ["architecture", "readability", "error_handling",
-                           "documentation", "performance"],
+            "dimensions": [
+                "architecture",
+                "readability",
+                "error_handling",
+                "documentation",
+                "performance",
+            ],
         },
         "improve": {"provider": "claude_native"},
         "token_budget": {
@@ -157,7 +194,9 @@ def validate_config(config):
     # Validate saturation_rounds
     saturation_rounds = quality.get("saturation_rounds", 3)
     if saturation_rounds < 1:
-        raise ValueError(f"quality.saturation_rounds must be >= 1, got {saturation_rounds}")
+        raise ValueError(
+            f"quality.saturation_rounds must be >= 1, got {saturation_rounds}"
+        )
     quality["saturation_rounds"] = saturation_rounds
 
     # Validate dimension targets
@@ -206,20 +245,26 @@ def apply_env_overrides(config):
         routing.setdefault("tier1", {})["model"] = resolved
         routing.setdefault("tier2", {})["model"] = resolved
         config["_env_overrides"] = config.get("_env_overrides", [])
-        config["_env_overrides"].append(f"HARNESS_GEMINI_MODEL={gemini_env} → {resolved}")
+        config["_env_overrides"].append(
+            f"HARNESS_GEMINI_MODEL={gemini_env} → {resolved}"
+        )
 
     if claude_env:
         resolved = CLAUDE_MODELS.get(claude_env, claude_env)
         routing.setdefault("tier3", {})["model"] = resolved
         config["_env_overrides"] = config.get("_env_overrides", [])
-        config["_env_overrides"].append(f"HARNESS_CLAUDE_MODEL={claude_env} → {resolved}")
+        config["_env_overrides"].append(
+            f"HARNESS_CLAUDE_MODEL={claude_env} → {resolved}"
+        )
 
     if improve_env:
         resolved = CLAUDE_MODELS.get(improve_env, improve_env)
         routing.setdefault("improve", {})["model"] = resolved
         if improve_env != claude_env:
             config["_env_overrides"] = config.get("_env_overrides", [])
-            config["_env_overrides"].append(f"HARNESS_IMPROVE_MODEL={improve_env} → {resolved}")
+            config["_env_overrides"].append(
+                f"HARNESS_IMPROVE_MODEL={improve_env} → {resolved}"
+            )
 
     return config
 
@@ -239,17 +284,26 @@ def resolve(config_path):
     resolved = deep_merge(DEFAULT_CONFIG, user_config)
     resolved = normalize_weights(resolved)
     resolved = validate_config(resolved)
-    resolved = apply_env_overrides(resolved)   # env vars win
+    resolved = apply_env_overrides(resolved)  # env vars win
     return resolved
 
 
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <config.yaml>", file=sys.stderr)
-        print(f"\nEnv var model overrides (highest precedence):", file=sys.stderr)
-        print(f"  HARNESS_GEMINI_MODEL   gemini-2.5-flash | gemini-2.5-pro", file=sys.stderr)
-        print(f"  HARNESS_CLAUDE_MODEL   claude-sonnet-4-5 | claude-sonnet-4-6 | claude-opus-4", file=sys.stderr)
-        print(f"  HARNESS_IMPROVE_MODEL  (defaults to HARNESS_CLAUDE_MODEL if unset)", file=sys.stderr)
+        print("\nEnv var model overrides (highest precedence):", file=sys.stderr)
+        print(
+            "  HARNESS_GEMINI_MODEL   gemini-2.5-flash | gemini-2.5-pro",
+            file=sys.stderr,
+        )
+        print(
+            "  HARNESS_CLAUDE_MODEL   claude-sonnet-4-5 | claude-sonnet-4-6 | claude-opus-4",
+            file=sys.stderr,
+        )
+        print(
+            "  HARNESS_IMPROVE_MODEL  (defaults to HARNESS_CLAUDE_MODEL if unset)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     config_path = sys.argv[1]

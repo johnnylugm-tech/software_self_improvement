@@ -75,8 +75,11 @@ def _apply_crg_subscores(scores, crg_metrics):
             scores["architecture"]["score"] = adjusted
             scores["architecture"]["crg_adjusted_from"] = orig
             scores["architecture"]["crg_cohesion_score"] = cohesion
-            adjustments["architecture"] = {"from": orig, "to": adjusted,
-                                           "reason": f"community_cohesion={cohesion}"}
+            adjustments["architecture"] = {
+                "from": orig,
+                "to": adjusted,
+                "reason": f"community_cohesion={cohesion}",
+            }
 
     flow = (crg_metrics.get("flow_coverage") or {}).get("score")
     if flow is not None and "error_handling" in scores:
@@ -86,8 +89,11 @@ def _apply_crg_subscores(scores, crg_metrics):
             scores["error_handling"]["score"] = adjusted
             scores["error_handling"]["crg_adjusted_from"] = orig
             scores["error_handling"]["crg_flow_score"] = flow
-            adjustments["error_handling"] = {"from": orig, "to": adjusted,
-                                             "reason": f"flow_coverage={flow}"}
+            adjustments["error_handling"] = {
+                "from": orig,
+                "to": adjusted,
+                "reason": f"flow_coverage={flow}",
+            }
 
     return adjustments
 
@@ -213,7 +219,9 @@ def main():
         print("  round_dir: path to .sessi-work/round_<n>")
         print("  config.json: resolved config (optional, uses defaults if omitted)")
         print("  issue_registry.json: persistent issue registry (optional)")
-        print("  env CRG_METRICS_PATH: path to crg_metrics.json (default: .sessi-work/crg_metrics.json)")
+        print(
+            "  env CRG_METRICS_PATH: path to crg_metrics.json (default: .sessi-work/crg_metrics.json)"
+        )
         sys.exit(1)
 
     round_dir = sys.argv[1]

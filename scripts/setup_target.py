@@ -15,6 +15,7 @@ import json
 # CRG integration (graceful — import failure is non-fatal)
 try:
     from crg_integration import ensure_ready as _crg_ensure_ready
+
     _HAS_CRG_MODULE = True
 except ImportError:
     _HAS_CRG_MODULE = False
@@ -134,13 +135,26 @@ def init_crg(repo_path: str, work_dir: str) -> dict:
         # Fallback: try CLI directly
         try:
             result = subprocess.run(
-                ["python3", Path(__file__).parent / "crg_integration.py", "ensure", repo_path],
-                capture_output=True, text=True, timeout=360,
+                [
+                    "python3",
+                    Path(__file__).parent / "crg_integration.py",
+                    "ensure",
+                    repo_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=360,
             )
             import json as _json
-            status = _json.loads(result.stdout) if result.stdout.strip() else {
-                "available": False, "reason": "crg_integration.py returned no output"
-            }
+
+            status = (
+                _json.loads(result.stdout)
+                if result.stdout.strip()
+                else {
+                    "available": False,
+                    "reason": "crg_integration.py returned no output",
+                }
+            )
         except Exception as e:
             status = {"available": False, "reason": str(e)[:120]}
 
@@ -157,9 +171,11 @@ def init_crg(repo_path: str, work_dir: str) -> dict:
         tag = " (auto-built)" if action == "auto_built" else ""
         print(f"[CRG] ✓ Ready — {nodes} nodes{tag}", file=sys.stderr)
     else:
-        print(f"[CRG] Not available — {status.get('reason', 'unknown')}. "
-              f"Framework will run without CRG (higher token cost for Tier 3).",
-              file=sys.stderr)
+        print(
+            f"[CRG] Not available — {status.get('reason', 'unknown')}. "
+            f"Framework will run without CRG (higher token cost for Tier 3).",
+            file=sys.stderr,
+        )
 
     return status
 

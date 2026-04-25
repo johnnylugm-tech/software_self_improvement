@@ -103,7 +103,6 @@ def load_all_rounds(work_dir):
 
     for round_dir in sorted(work_path.glob("round_*")):
         if round_dir.is_dir():
-            round_json = round_dir / "round_*.json"
             # Find the actual round file
             round_files = list(round_dir.glob("round_*.json"))
             if round_files:
@@ -186,7 +185,9 @@ def create_final_report(work_dir):
         else:
             delta_str = "—"
 
-        lines.append(f"| {dim_name} | {start_score:.1f} | {end_score:.1f} | {delta_str} |")
+        lines.append(
+            f"| {dim_name} | {start_score:.1f} | {end_score:.1f} | {delta_str} |"
+        )
 
     lines.append("")
 
@@ -264,7 +265,9 @@ def main():
 
     if command == "round":
         if len(sys.argv) < 5:
-            print("Error: round checkpoint requires round_num, scores.json, overall_score")
+            print(
+                "Error: round checkpoint requires round_num, scores.json, overall_score"
+            )
             sys.exit(1)
 
         round_num = int(sys.argv[2])

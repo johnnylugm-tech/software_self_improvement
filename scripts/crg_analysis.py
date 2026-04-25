@@ -69,27 +69,28 @@ FLOW_GOOD_HANDLER_PCT = _ti("CRG_FLOW_GOOD_PCT", 80)
 # Maps CRG's suggested-question categories to (dimension, severity).
 # Deep integration: CRG's own priorities become registry issues automatically.
 SUGGESTED_Q_SEVERITY_MAP = {
-    "bridge_needs_tests":         ("test_coverage", "high"),
-    "untested_hubs":              ("test_coverage", "high"),
-    "untested_hotspots":          ("test_coverage", "medium"),
-    "cross_community_coupling":   ("architecture",  "medium"),
-    "thin_communities":           ("architecture",  "medium"),
-    "god_modules":                ("architecture",  "high"),
-    "dead_code":                  ("architecture",  "low"),
-    "surprising_connections":     ("architecture",  "medium"),
+    "bridge_needs_tests": ("test_coverage", "high"),
+    "untested_hubs": ("test_coverage", "high"),
+    "untested_hotspots": ("test_coverage", "medium"),
+    "cross_community_coupling": ("architecture", "medium"),
+    "thin_communities": ("architecture", "medium"),
+    "god_modules": ("architecture", "high"),
+    "dead_code": ("architecture", "low"),
+    "surprising_connections": ("architecture", "medium"),
 }
 
 
 # =============== Metric Computations ===============
+
 
 def compute_eval_depth(risk_score):
     """Risk-based eval depth gate. Drives token budget per dimension."""
     if risk_score is None:
         return "standard"
     if risk_score >= RISK_DEEP_THRESHOLD:
-        return "deep"      # full LLM reasoning, read hubs + bridges
+        return "deep"  # full LLM reasoning, read hubs + bridges
     if risk_score < RISK_FAST_THRESHOLD:
-        return "fast"      # tool-only, skip LLM for Tier 3
+        return "fast"  # tool-only, skip LLM for Tier 3
     return "standard"
 
 
@@ -117,12 +118,14 @@ def compute_community_cohesion_score(communities: list) -> dict:
         if size > COMMUNITY_OVERSIZED:
             reasons.append(f"oversized({size})")
         if reasons:
-            unhealthy.append({
-                "name": c.get("name", "unknown"),
-                "cohesion": cohesion,
-                "size": size,
-                "issues": reasons,
-            })
+            unhealthy.append(
+                {
+                    "name": c.get("name", "unknown"),
+                    "cohesion": cohesion,
+                    "size": size,
+                    "issues": reasons,
+                }
+            )
         else:
             healthy += 1
 
@@ -151,7 +154,9 @@ def compute_flow_coverage_score(flows: list) -> dict:
     with_handler = sum(1 for f in flows if f.get("has_error_handler"))
     total = len(flows)
     score = round(100.0 * with_handler / total, 1) if total > 0 else 100
-    missing = [f.get("name", "unknown") for f in flows if not f.get("has_error_handler")]
+    missing = [
+        f.get("name", "unknown") for f in flows if not f.get("has_error_handler")
+    ]
 
     return {
         "score": score,
@@ -206,13 +211,15 @@ def compute_hub_risk_map(hubs: list, knowledge_gaps: list) -> dict:
         else:
             sev = "medium" if untested else "low"
 
-        mapped.append({
-            "name": name,
-            "file": h.get("file"),
-            "fan_in": fan_in,
-            "untested": untested,
-            "severity": sev,
-        })
+        mapped.append(
+            {
+                "name": name,
+                "file": h.get("file"),
+                "fan_in": fan_in,
+                "untested": untested,
+                "severity": sev,
+            }
+        )
 
         if sev == "critical":
             crit += 1
@@ -231,6 +238,7 @@ def compute_hub_risk_map(hubs: list, knowledge_gaps: list) -> dict:
 
 # =============== Top-Level Orchestration ===============
 
+
 def _validate_recon(recon: dict) -> list:
     """
     Return a list of warning strings when key CRG fields are absent.
@@ -242,13 +250,13 @@ def _validate_recon(recon: dict) -> list:
     """
     warnings = []
     expected = {
-        "risk_score":             "get_minimal_context",
-        "high_risk_hubs":         "get_hub_nodes",
+        "risk_score": "get_minimal_context",
+        "high_risk_hubs": "get_hub_nodes",
         "low_cohesion_communities": "list_communities",
-        "untested_hotspots":      "get_knowledge_gaps",
-        "dead_code":              "refactor_tool(dead_code)",
-        "flows":                  "list_flows / get_affected_flows",
-        "suggested_questions":    "get_suggested_questions",
+        "untested_hotspots": "get_knowledge_gaps",
+        "dead_code": "refactor_tool(dead_code)",
+        "flows": "list_flows / get_affected_flows",
+        "suggested_questions": "get_suggested_questions",
     }
     for field, source_tool in expected.items():
         if recon.get(field) is None:
@@ -291,7 +299,7 @@ def compute_metrics(recon: dict) -> dict:
 
     communities = (
         recon.get("low_cohesion_communities", [])
-        + recon.get("communities", [])   # accept either key
+        + recon.get("communities", [])  # accept either key
     )
     # de-dup by name if both present
     seen = set()
@@ -307,7 +315,7 @@ def compute_metrics(recon: dict) -> dict:
     return {
         "risk_score": risk_score,
         "eval_depth": compute_eval_depth(risk_score),
-        "data_warnings": warnings,        # empty list = full CRG data present
+        "data_warnings": warnings,  # empty list = full CRG data present
         "thresholds": {
             "risk_deep": RISK_DEEP_THRESHOLD,
             "risk_fast": RISK_FAST_THRESHOLD,
@@ -320,9 +328,7 @@ def compute_metrics(recon: dict) -> dict:
         },
         "community_cohesion": compute_community_cohesion_score(deduped),
         "flow_coverage": compute_flow_coverage_score(recon.get("flows", [])),
-        "dead_code": compute_dead_code_ratio(
-            recon.get("dead_code", []), total_nodes
-        ),
+        "dead_code": compute_dead_code_ratio(recon.get("dead_code", []), total_nodes),
         "hub_risk_map": compute_hub_risk_map(
             recon.get("high_risk_hubs", []),
             recon.get("untested_hotspots", []),
@@ -332,6 +338,7 @@ def compute_metrics(recon: dict) -> dict:
 
 
 # =============== Issue Seeding ===============
+
 
 def seed_issues_from_suggested_questions(
     registry: dict, metrics: dict, round_num: int = 0
@@ -364,6 +371,7 @@ def seed_issues_from_suggested_questions(
 
 
 # =============== CLI ===============
+
 
 def _help():
     print(f"""Usage: {sys.argv[0]} <command> [args]
@@ -399,7 +407,8 @@ def main():
 
     if cmd == "metrics":
         if len(sys.argv) < 3:
-            _help(); sys.exit(1)
+            _help()
+            sys.exit(1)
         recon = _load_recon(sys.argv[2])
         out = sys.argv[3] if len(sys.argv) > 3 else ".sessi-work/crg_metrics.json"
         metrics = compute_metrics(recon)
@@ -409,13 +418,15 @@ def main():
 
     elif cmd == "depth_gate":
         if len(sys.argv) < 3:
-            _help(); sys.exit(1)
+            _help()
+            sys.exit(1)
         recon = _load_recon(sys.argv[2])
         print(compute_eval_depth(recon.get("risk_score")))
 
     elif cmd == "seed_issues":
         if len(sys.argv) < 5:
-            _help(); sys.exit(1)
+            _help()
+            sys.exit(1)
         if issue_tracker is None:
             print("issue_tracker module unavailable", file=sys.stderr)
             sys.exit(1)
@@ -430,16 +441,21 @@ def main():
         print(json.dumps(seeded, indent=2))
 
     elif cmd == "thresholds":
-        print(json.dumps({
-            "risk_deep": RISK_DEEP_THRESHOLD,
-            "risk_fast": RISK_FAST_THRESHOLD,
-            "cohesion_healthy": COHESION_HEALTHY,
-            "community_oversized": COMMUNITY_OVERSIZED,
-            "dead_code_escalate_ratio": DEAD_CODE_ESCALATE_RATIO,
-            "hub_critical_fan_in": HUB_CRITICAL_FAN_IN,
-            "hub_high_fan_in": HUB_HIGH_FAN_IN,
-            "flow_good_handler_pct": FLOW_GOOD_HANDLER_PCT,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "risk_deep": RISK_DEEP_THRESHOLD,
+                    "risk_fast": RISK_FAST_THRESHOLD,
+                    "cohesion_healthy": COHESION_HEALTHY,
+                    "community_oversized": COMMUNITY_OVERSIZED,
+                    "dead_code_escalate_ratio": DEAD_CODE_ESCALATE_RATIO,
+                    "hub_critical_fan_in": HUB_CRITICAL_FAN_IN,
+                    "hub_high_fan_in": HUB_HIGH_FAN_IN,
+                    "flow_good_handler_pct": FLOW_GOOD_HANDLER_PCT,
+                },
+                indent=2,
+            )
+        )
 
     else:
         _help()

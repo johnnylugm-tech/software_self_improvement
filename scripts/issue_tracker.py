@@ -67,30 +67,37 @@ def add_finding(registry: dict, finding: dict, dimension: str, round_num: int) -
         return iid
 
     # New issue
-    registry["issues"].append({
-        "id": iid,
-        "dimension": dimension,
-        "severity": severity,
-        "file": file,
-        "line": line,
-        "message": message,
-        "evidence": finding.get("evidence", ""),
-        "status": "open",
-        "round_found": round_num,
-        "last_seen_round": round_num,
-        "round_resolved": None,
-        "resolution_note": None,
-        "commit_sha": None,         # populated on mark_fixed
-        "files_changed": [],        # populated on mark_fixed
-    })
+    registry["issues"].append(
+        {
+            "id": iid,
+            "dimension": dimension,
+            "severity": severity,
+            "file": file,
+            "line": line,
+            "message": message,
+            "evidence": finding.get("evidence", ""),
+            "status": "open",
+            "round_found": round_num,
+            "last_seen_round": round_num,
+            "round_resolved": None,
+            "resolution_note": None,
+            "commit_sha": None,  # populated on mark_fixed
+            "files_changed": [],  # populated on mark_fixed
+        }
+    )
     return iid
 
 
 # Dimensions whose fixes must be verified by re-running a tool.
 # mark_fixed() raises ValueError if tool_rerun_path is absent for these dims.
 TOOL_VERIFIABLE_DIMS = {
-    "linting", "type_safety", "test_coverage", "security",
-    "secrets_scanning", "license_compliance", "mutation_testing",
+    "linting",
+    "type_safety",
+    "test_coverage",
+    "security",
+    "secrets_scanning",
+    "license_compliance",
+    "mutation_testing",
 }
 
 
@@ -197,12 +204,12 @@ def accepted_risks(registry: dict) -> list:
     report to surface 'found but intentionally not fixed' items with their
     reasons — so nothing silently disappears.
     """
-    issues = [
-        i for i in registry["issues"]
-        if i["status"] in ("deferred", "wontfix")
-    ]
+    issues = [i for i in registry["issues"] if i["status"] in ("deferred", "wontfix")]
     issues.sort(
-        key=lambda i: (SEVERITY_ORDER.get(i["severity"], 99), i.get("round_resolved") or 0)
+        key=lambda i: (
+            SEVERITY_ORDER.get(i["severity"], 99),
+            i.get("round_resolved") or 0,
+        )
     )
     return issues
 
@@ -218,7 +225,11 @@ def by_dimension(registry: dict) -> dict:
         d = i["dimension"]
         if d not in dims:
             dims[d] = {
-                "found": 0, "fixed": 0, "deferred": 0, "wontfix": 0, "open": 0,
+                "found": 0,
+                "fixed": 0,
+                "deferred": 0,
+                "wontfix": 0,
+                "open": 0,
                 "by_severity": {},
                 "issues": [],
             }
@@ -241,7 +252,12 @@ def report(registry: dict) -> dict:
     """
     s = summary(registry)
     fixed = [i for i in registry["issues"] if i["status"] == "fixed"]
-    fixed.sort(key=lambda i: (SEVERITY_ORDER.get(i["severity"], 99), i.get("round_resolved") or 0))
+    fixed.sort(
+        key=lambda i: (
+            SEVERITY_ORDER.get(i["severity"], 99),
+            i.get("round_resolved") or 0,
+        )
+    )
     return {
         "summary": s,
         "open": open_issues(registry),
@@ -252,7 +268,9 @@ def report(registry: dict) -> dict:
     }
 
 
-def saturation_check(registry: dict, current_round: int, saturation_rounds: int = 3) -> bool:
+def saturation_check(
+    registry: dict, current_round: int, saturation_rounds: int = 3
+) -> bool:
     """
     Return True if no NEW issues were found in the last N rounds.
     Used for issue-saturation early-stop (in addition to score gate).
@@ -262,13 +280,13 @@ def saturation_check(registry: dict, current_round: int, saturation_rounds: int 
 
     lookback_start = current_round - saturation_rounds + 1
     new_in_recent = [
-        i for i in registry["issues"]
-        if i["round_found"] >= lookback_start
+        i for i in registry["issues"] if i["round_found"] >= lookback_start
     ]
     return len(new_in_recent) == 0
 
 
 # ============ CLI ============
+
 
 def main():
     if len(sys.argv) < 3:
@@ -307,9 +325,18 @@ def main():
         files_csv = sys.argv[6] if len(sys.argv) > 6 else ""
         note = sys.argv[7] if len(sys.argv) > 7 else ""
         tool_rerun_path = sys.argv[8] if len(sys.argv) > 8 else None
-        files = [f.strip() for f in files_csv.split(",") if f.strip()] if files_csv else []
-        mark_fixed(registry, iid, rnd, commit_sha=commit_sha, files_changed=files,
-                   note=note, tool_rerun_path=tool_rerun_path)
+        files = (
+            [f.strip() for f in files_csv.split(",") if f.strip()] if files_csv else []
+        )
+        mark_fixed(
+            registry,
+            iid,
+            rnd,
+            commit_sha=commit_sha,
+            files_changed=files,
+            note=note,
+            tool_rerun_path=tool_rerun_path,
+        )
         save(registry, path)
         print(f"fixed: {iid}")
 
@@ -338,11 +365,15 @@ def main():
     elif cmd == "saturation":
         rnd = int(sys.argv[3])
         lookback = int(sys.argv[4]) if len(sys.argv) > 4 else 3
-        print(json.dumps({
-            "saturated": saturation_check(registry, rnd, lookback),
-            "lookback_rounds": lookback,
-            "current_round": rnd,
-        }))
+        print(
+            json.dumps(
+                {
+                    "saturated": saturation_check(registry, rnd, lookback),
+                    "lookback_rounds": lookback,
+                    "current_round": rnd,
+                }
+            )
+        )
 
     else:
         print(f"Unknown command: {cmd}")

@@ -17,8 +17,8 @@ CAP_DELTA = 3  # Max Δ without diff evidence
 TOOL_DIFF_MIN_LINES = 3  # Min lines of diff for evidence
 
 # Self-consistency gate constants
-CONSISTENCY_JUMP_THRESHOLD = 15   # Score jump requiring ≥3 diff-backed evidence pieces
-CONSISTENCY_HIGH_SCORE_MIN = 85   # Scores ≥ this require inflation_capped check
+CONSISTENCY_JUMP_THRESHOLD = 15  # Score jump requiring ≥3 diff-backed evidence pieces
+CONSISTENCY_HIGH_SCORE_MIN = 85  # Scores ≥ this require inflation_capped check
 CONSISTENCY_MIN_EVIDENCE_PIECES = 3  # Min evidence required for large jumps
 
 
@@ -77,8 +77,9 @@ def load_pre_state(round_dir):
     return prev_state
 
 
-def self_consistency_gate(dim_result: dict, dim_name: str, previous_score: float,
-                          diff_lines: int) -> dict:
+def self_consistency_gate(
+    dim_result: dict, dim_name: str, previous_score: float, diff_lines: int
+) -> dict:
     """
     Self-Consistency Uncertainty Gate (Anti-Hallucination, Anti-Self-Congratulation).
 
@@ -194,12 +195,14 @@ def verify(result_path, round_dir, repo_path):
         # --- Self-consistency gate (runs for every dimension) ---
         sc = self_consistency_gate(dim_result, dim_name, previous_score, diff_lines)
         if sc["flagged"]:
-            consistency_flags.append({
-                "dimension": dim_name,
-                "reason": sc["reason"],
-                "action": sc["action"],
-                "cap_to": sc["cap_to"],
-            })
+            consistency_flags.append(
+                {
+                    "dimension": dim_name,
+                    "reason": sc["reason"],
+                    "action": sc["action"],
+                    "cap_to": sc["cap_to"],
+                }
+            )
             if sc["action"] == "cap" and sc["cap_to"] is not None:
                 result[dim_name]["score"] = sc["cap_to"]
                 result[dim_name]["consistency_capped"] = True
@@ -265,9 +268,7 @@ def verify(result_path, round_dir, repo_path):
 
 def main():
     if len(sys.argv) < 3:
-        print(
-            f"Usage: {sys.argv[0]} <result.json> <round_dir> [repo_path]"
-        )
+        print(f"Usage: {sys.argv[0]} <result.json> <round_dir> [repo_path]")
         print("  result.json: raw evaluation results")
         print("  round_dir: path to .sessi-work/round_<n>")
         print("  repo_path: repository path (default: current dir)")

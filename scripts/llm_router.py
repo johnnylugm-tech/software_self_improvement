@@ -24,29 +24,26 @@ _IMPROVE_MODEL = os.environ.get("HARNESS_IMPROVE_MODEL", _CLAUDE_MODEL)
 # Routing table: dimension → tier
 TIER_MAP = {
     # Tier 1: Tool output is the full story — LLM only summarizes
-    "linting":            1,
-    "type_safety":        1,
-    "test_coverage":      1,
-    "secrets_scanning":   1,
+    "linting": 1,
+    "type_safety": 1,
+    "test_coverage": 1,
+    "secrets_scanning": 1,
     "license_compliance": 1,
-    "mutation_testing":   1,
-
+    "mutation_testing": 1,
     # Tier 2: Light judgment needed (borderline, Flash still handles well)
-    "security":           2,
-
+    "security": 2,
     # Tier 3: Deep reasoning, subjective judgment, or code-level analysis
-    "architecture":       3,
-    "readability":        3,
-    "error_handling":     3,
-    "documentation":      3,
-    "performance":        3,
-
+    "architecture": 3,
+    "readability": 3,
+    "error_handling": 3,
+    "documentation": 3,
+    "performance": 3,
     # Extended dims — classify conservatively
-    "property_testing":       1,
-    "fuzzing":                1,
-    "accessibility":          1,
-    "observability":          1,
-    "supply_chain_security":  1,
+    "property_testing": 1,
+    "fuzzing": 1,
+    "accessibility": 1,
+    "observability": 1,
+    "supply_chain_security": 1,
 }
 
 TIER_CONFIG = {
@@ -118,7 +115,9 @@ def route(dimension: str) -> dict:
         "rationale": config["rationale"],
         "token_budget": config["token_budget"],
         "use_gemini": config["provider"] == "gemini",
-        "gemini_prompt_template": GEMINI_PROMPT_TEMPLATE if config["provider"] == "gemini" else None,
+        "gemini_prompt_template": GEMINI_PROMPT_TEMPLATE
+        if config["provider"] == "gemini"
+        else None,
     }
     # Surface env overrides for transparency
     if _GEMINI_MODEL != "gemini-2.5-flash" and config["provider"] == "gemini":
@@ -132,7 +131,7 @@ def build_gemini_prompt(dimension: str, tool_output: str, code_sample: str = "")
     """Build Gemini prompt for a tool-first dimension."""
     return GEMINI_PROMPT_TEMPLATE.format(
         dimension=dimension,
-        tool_output=tool_output[:6000],       # Hard cap to stay in budget
+        tool_output=tool_output[:6000],  # Hard cap to stay in budget
         code_sample=code_sample[:2000] if code_sample else "(not provided)",
     )
 

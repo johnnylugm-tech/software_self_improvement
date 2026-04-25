@@ -1,0 +1,197 @@
+{
+  "overall_score": 85.25,
+  "score_gate": 85,
+  "target": 85,
+  "meets_target": true,
+  "quality_complete": true,
+  "open_critical_count": 0,
+  "open_high_count": 0,
+  "open_medium_count": 0,
+  "open_total": 0,
+  "failing_dimensions": [
+    {
+      "dimension": "test_coverage",
+      "score": 60,
+      "target": 80,
+      "gap": 20,
+      "weight": 0.13,
+      "impact": 2.6
+    },
+    {
+      "dimension": "mutation_testing",
+      "score": 50,
+      "target": 70,
+      "gap": 20,
+      "weight": 0.08,
+      "impact": 1.6
+    },
+    {
+      "dimension": "type_safety",
+      "score": 85,
+      "target": 95,
+      "gap": 10,
+      "weight": 0.1,
+      "impact": 1.0
+    }
+  ],
+  "breakdown": {
+    "linting": {
+      "score": 100,
+      "target": 95,
+      "gap": 0,
+      "weight": 0.06,
+      "weighted_score": 6.0
+    },
+    "type_safety": {
+      "score": 85,
+      "target": 95,
+      "gap": 10,
+      "weight": 0.1,
+      "weighted_score": 8.5
+    },
+    "test_coverage": {
+      "score": 60,
+      "target": 80,
+      "gap": 20,
+      "weight": 0.13,
+      "weighted_score": 7.800000000000001
+    },
+    "security": {
+      "score": 100,
+      "target": 90,
+      "gap": 0,
+      "weight": 0.1,
+      "weighted_score": 10.0
+    },
+    "performance": {
+      "score": 90,
+      "target": 80,
+      "gap": 0,
+      "weight": 0.07,
+      "weighted_score": 6.300000000000001
+    },
+    "architecture": {
+      "score": 90,
+      "target": 80,
+      "gap": 0,
+      "weight": 0.07,
+      "weighted_score": 6.300000000000001
+    },
+    "readability": {
+      "score": 95,
+      "target": 85,
+      "gap": 0,
+      "weight": 0.06,
+      "weighted_score": 5.7
+    },
+    "error_handling": {
+      "score": 85,
+      "target": 85,
+      "gap": 0,
+      "weight": 0.09,
+      "weighted_score": 7.6499999999999995
+    },
+    "documentation": {
+      "score": 90,
+      "target": 85,
+      "gap": 0,
+      "weight": 0.1,
+      "weighted_score": 9.0
+    },
+    "secrets_scanning": {
+      "score": 100,
+      "target": 100,
+      "gap": 0,
+      "weight": 0.08,
+      "weighted_score": 8.0
+    },
+    "mutation_testing": {
+      "score": 50,
+      "target": 70,
+      "gap": 20,
+      "weight": 0.08,
+      "weighted_score": 4.0
+    },
+    "license_compliance": {
+      "score": 100,
+      "target": 95,
+      "gap": 0,
+      "weight": 0.06,
+      "weighted_score": 6.0
+    }
+  },
+  "crg_adjustments": {
+    "architecture": {
+      "dimension": "architecture",
+      "score": 90,
+      "tool_outputs": "CRG MCP validated.",
+      "findings": []
+    },
+    "documentation": {
+      "dimension": "documentation",
+      "score": 90,
+      "tool_outputs": "Comprehensive README & Test suite added.",
+      "findings": []
+    },
+    "error_handling": {
+      "dimension": "error_handling",
+      "score": 85,
+      "tool_outputs": "Unified semicolon fix & logic.",
+      "findings": []
+    },
+    "license_compliance": {
+      "dimension": "license_compliance",
+      "score": 100,
+      "tool_outputs": "MIT License fixed.",
+      "findings": []
+    },
+    "linting": {
+      "dimension": "linting",
+      "score": 100,
+      "tool_outputs": "Ruff Clean",
+      "findings": []
+    },
+    "mutation_testing": {
+      "dimension": "mutation_testing",
+      "score": 50,
+      "tool_outputs": "Base.",
+      "findings": []
+    },
+    "performance": {
+      "dimension": "performance",
+      "score": 90,
+      "tool_outputs": "Modular & Efficient.",
+      "findings": []
+    },
+    "readability": {
+      "dimension": "readability",
+      "score": 95,
+      "tool_outputs": "Formatted with Ruff.",
+      "findings": []
+    },
+    "secrets_scanning": {
+      "dimension": "secrets_scanning",
+      "score": 100,
+      "tool_outputs": "Clean.",
+      "findings": []
+    },
+    "security": {
+      "dimension": "security",
+      "score": 100,
+      "tool_outputs": "Toolchain security verified.",
+      "findings": []
+    },
+    "test_coverage": {
+      "dimension": "test_coverage",
+      "score": 60,
+      "tool_outputs": "Framework established, core logic tested.",
+      "findings": []
+    },
+    "type_safety": {
+      "dimension": "type_safety",
+      "score": 85,
+      "tool_outputs": "Mypy compliant core scripts.",
+      "findings": []
+    }
+  }
+}

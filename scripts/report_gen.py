@@ -46,12 +46,14 @@ def load_round_scores(work_dir: Path) -> list:
             p = round_dir / fname
             if p.exists():
                 try:
-                    rounds.append({
-                        "round": int(round_dir.name.split("_")[1]),
-                        "dir": str(round_dir),
-                        "source": fname,
-                        "data": json.loads(p.read_text()),
-                    })
+                    rounds.append(
+                        {
+                            "round": int(round_dir.name.split("_")[1]),
+                            "dir": str(round_dir),
+                            "source": fname,
+                            "data": json.loads(p.read_text()),
+                        }
+                    )
                 except (ValueError, json.JSONDecodeError):
                     pass
                 break
@@ -65,12 +67,24 @@ def enrich_commit_files(commit_sha: str, repo_path: Path) -> list:
         return []
     try:
         out = subprocess.check_output(
-            ["git", "-C", str(repo_path), "show", "--name-only", "--format=", commit_sha],
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "show",
+                "--name-only",
+                "--format=",
+                commit_sha,
+            ],
             stderr=subprocess.DEVNULL,
             timeout=5,
         ).decode()
         return [line.strip() for line in out.splitlines() if line.strip()]
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return []
 
 
@@ -105,7 +119,9 @@ def determine_recommendation(registry_report: dict, rounds: list) -> str:
     return "partial"
 
 
-def render_header(repo_path: Path, overall_score: float, score_gate: int, rec: str) -> str:
+def render_header(
+    repo_path: Path, overall_score: float, score_gate: int, rec: str
+) -> str:
     rec_emoji = {"pass": "✅", "pass-with-risks": "⚠️", "partial": "🟡", "fail": "❌"}
     return f"""# Quality Improvement Report
 
@@ -124,21 +140,21 @@ def render_summary(registry_report: dict) -> str:
 
 | Metric | Count |
 |--------|------:|
-| Total issues found | {s.get('total', 0)} |
-| Fixed | {by_status.get('fixed', 0)} |
-| Wontfix (accepted risk) | {by_status.get('wontfix', 0)} |
-| Deferred | {by_status.get('deferred', 0)} |
-| Still open | {s.get('open_total', 0)} |
+| Total issues found | {s.get("total", 0)} |
+| Fixed | {by_status.get("fixed", 0)} |
+| Wontfix (accepted risk) | {by_status.get("wontfix", 0)} |
+| Deferred | {by_status.get("deferred", 0)} |
+| Still open | {s.get("open_total", 0)} |
 
 ### By Severity
 
 | Severity | Found | Still Open |
 |----------|------:|-----------:|
-| 🔴 Critical | {by_sev.get('critical', 0)} | {s.get('open_critical', 0)} |
-| 🟠 High     | {by_sev.get('high', 0)} | {s.get('open_high', 0)} |
-| 🟡 Medium   | {by_sev.get('medium', 0)} | {s.get('open_medium', 0)} |
-| 🔵 Low      | {by_sev.get('low', 0)} | {s.get('open_by_severity', {}).get('low', 0)} |
-| ⚪ Info     | {by_sev.get('info', 0)} | {s.get('open_by_severity', {}).get('info', 0)} |
+| 🔴 Critical | {by_sev.get("critical", 0)} | {s.get("open_critical", 0)} |
+| 🟠 High     | {by_sev.get("high", 0)} | {s.get("open_high", 0)} |
+| 🟡 Medium   | {by_sev.get("medium", 0)} | {s.get("open_medium", 0)} |
+| 🔵 Low      | {by_sev.get("low", 0)} | {s.get("open_by_severity", {}).get("low", 0)} |
+| ⚪ Info     | {by_sev.get("info", 0)} | {s.get("open_by_severity", {}).get("info", 0)} |
 """
 
 
@@ -189,7 +205,11 @@ def render_trajectory(rounds: list) -> str:
     if first_ov is not None and last_ov is not None:
         do = last_ov - first_ov
         d_overall = f"**{'+' if do >= 0 else ''}{do:.1f}**"
-    overall_row = "| **Overall** | " + " | ".join(f"**{c}**" for c in overall_cells) + f" | {d_overall} |"
+    overall_row = (
+        "| **Overall** | "
+        + " | ".join(f"**{c}**" for c in overall_cells)
+        + f" | {d_overall} |"
+    )
 
     return f"""## 2. Score Trajectory
 
@@ -249,7 +269,9 @@ def render_fixed(registry_report: dict, repo_path: Path) -> str:
             commit = i.get("commit_sha") or "—"
             commit_short = commit[:8] if commit and commit != "—" else "—"
 
-            lines.append(f"| `{i['id']}` | {sev} | {loc} | {msg} | `{commit_short}` | {files_str} |")
+            lines.append(
+                f"| `{i['id']}` | {sev} | {loc} | {msg} | `{commit_short}` | {files_str} |"
+            )
         lines.append("")
     return "\n".join(lines)
 
@@ -305,14 +327,15 @@ def render_evidence(repo_path: Path, rounds: list) -> str:
     if not rounds:
         return "## 7. Evidence Trail\n\n_No rounds recorded._\n"
     try:
-        since = f"round-1"
         out = subprocess.check_output(
             ["git", "-C", str(repo_path), "log", "--oneline", "-20"],
-            stderr=subprocess.DEVNULL, timeout=5,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
         ).decode()
     except Exception:
         out = "_git log unavailable_"
-    return f"""## 7. Evidence Trail
+    return (
+        f"""## 7. Evidence Trail
 
 ### Recent Commits
 ```
@@ -320,10 +343,17 @@ def render_evidence(repo_path: Path, rounds: list) -> str:
 ```
 
 ### Round Artifacts
-""" + "\n".join(f"- Round {r['round']}: `{r['dir']}` ({r['source']})" for r in rounds) + "\n"
+"""
+        + "\n".join(
+            f"- Round {r['round']}: `{r['dir']}` ({r['source']})" for r in rounds
+        )
+        + "\n"
+    )
 
 
-def generate(repo_path: Path, work_dir: Path, registry_path: Path, score_gate: int = 85) -> str:
+def generate(
+    repo_path: Path, work_dir: Path, registry_path: Path, score_gate: int = 85
+) -> str:
     registry = issue_tracker.load(str(registry_path))
     rep = issue_tracker.report(registry)
     rounds = load_round_scores(work_dir)
