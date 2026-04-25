@@ -1,7 +1,0 @@
-[run]
-source = scripts
-
-[report]
-omit =
-    */site-packages/*
-    tests/*
