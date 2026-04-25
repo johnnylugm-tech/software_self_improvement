@@ -1,4 +1,3 @@
-import pytest
 from scripts import verify, score, config_loader, report_gen
 from pathlib import Path
 

@@ -1,6 +1,4 @@
-import pytest
 from scripts import report_gen, verify, crg_analysis
-import json
 
 def test_report_gen_recommendation():
     # 模擬成果報告：只有 Low issues 時應回傳 pass

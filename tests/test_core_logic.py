@@ -1,6 +1,4 @@
-import pytest
 import os
-from scripts import config_loader, issue_tracker
 
 
 def test_config_loader_exists():

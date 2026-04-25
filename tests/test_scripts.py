@@ -1,4 +1,3 @@
-import pytest
 from scripts import checkpoint, config_loader, score
 
 
