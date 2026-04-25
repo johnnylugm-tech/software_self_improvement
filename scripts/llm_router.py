@@ -20,6 +20,7 @@ import json
 _GEMINI_MODEL = os.environ.get("HARNESS_GEMINI_MODEL", "gemini-2.5-flash")
 _CLAUDE_MODEL = os.environ.get("HARNESS_CLAUDE_MODEL", "claude-sonnet-4-5")
 _IMPROVE_MODEL = os.environ.get("HARNESS_IMPROVE_MODEL", _CLAUDE_MODEL)
+_HERMES_TARGET = os.environ.get("HARNESS_HERMES_TARGET", "slack:#quality-audit")  # Default target
 
 # Routing table: dimension → tier
 TIER_MAP = {
@@ -65,6 +66,13 @@ TIER_CONFIG = {
         "rationale": "Deep reasoning / subjective judgment / code understanding required",
         "token_budget": {"input": 20000, "output": 3000},
     },
+}
+
+HERMES_CONFIG = {
+    "enabled": os.environ.get("HARNESS_HERMES_ENABLED", "false").lower() == "true",
+    "target": _HERMES_TARGET,
+    "provider": "hermes",
+    "action": "mcp_hermes_messages_send"
 }
 
 # Improve step always Claude — separate override available
@@ -119,6 +127,13 @@ def route(dimension: str) -> dict:
         if config["provider"] == "gemini"
         else None,
     }
+
+    if HERMES_CONFIG["enabled"]:
+        result["hermes_notification"] = {
+            "target": HERMES_CONFIG["target"],
+            "tool": HERMES_CONFIG["action"],
+            "message": f"📊 [Harness Audit] Routing dimension '{dimension}' to {config['provider']} ({config['model']})"
+        }
     # Surface env overrides for transparency
     if _GEMINI_MODEL != "gemini-2.5-flash" and config["provider"] == "gemini":
         result["_env_override"] = f"HARNESS_GEMINI_MODEL={_GEMINI_MODEL}"
