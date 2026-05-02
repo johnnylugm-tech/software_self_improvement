@@ -37,7 +37,8 @@ def load_scores(round_dir):
     for score_file in sorted(scores_dir.glob("*.json")):
         with open(score_file, "r") as f:
             dim_score = json.load(f)
-            dim_name = dim_score["dimension"]
+            # Support both explicit "dimension" key and filename-based inference
+            dim_name = dim_score.get("dimension", score_file.stem)
             scores[dim_name] = dim_score
 
     if not scores:
