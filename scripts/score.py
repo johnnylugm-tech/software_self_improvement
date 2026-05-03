@@ -27,7 +27,8 @@ def load_scores(round_dir):
     Load all dimension scores from round directory
 
     Expected: .sessi-work/round_<n>/scores/*.json
-    Each file contains: {"dimension": "...", "score": 0-100, ...}
+    Each file contains: {"score": 0-100, ...} and optionally "dimension";
+    if omitted, the dimension name is inferred from the filename stem.
     """
     scores_dir = Path(round_dir) / "scores"
     if not scores_dir.exists():
@@ -37,7 +38,8 @@ def load_scores(round_dir):
     for score_file in sorted(scores_dir.glob("*.json")):
         with open(score_file, "r") as f:
             dim_score = json.load(f)
-            dim_name = dim_score["dimension"]
+            # Support both explicit "dimension" key and filename-based inference
+            dim_name = dim_score.get("dimension", score_file.stem)
             scores[dim_name] = dim_score
 
     if not scores:
